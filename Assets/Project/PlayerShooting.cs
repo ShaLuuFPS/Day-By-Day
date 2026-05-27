@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem; // 使用新输入系统
-
+using TMPro;
 public class PlayerShooting : MonoBehaviour
 {
     [Header("枪械状态")]
@@ -12,6 +12,15 @@ public class PlayerShooting : MonoBehaviour
     [Header("射击预制体")]
     public GameObject bulletPrefab;    // 子弹的预制体（等会制作）
     public Transform firePoint;        // 枪口位置（也就是角色的face/nose）
+
+    [Header("UI 元素")]
+    public TextMeshProUGUI ammoText;
+
+    void Start()
+    {
+        UpdateAmmoUI();
+    }
+
 
     void Update()
     {
@@ -39,6 +48,7 @@ public class PlayerShooting : MonoBehaviour
             currentAmmo--; // 扣除一发子弹
             Debug.Log($"开火！弹夹剩余: {currentAmmo}/{maxMagazineSize}");
 
+            UpdateAmmoUI();
             // 在枪口位置（firePoint），以枪口的旋转方向，克隆（生成）一颗子弹
             Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
         }
@@ -71,7 +81,7 @@ public class PlayerShooting : MonoBehaviour
             currentAmmo = reserveAmmo;
             reserveAmmo = 0;
         }
-
+        UpdateAmmoUI();
         Debug.Log($"换弹成功！当前弹夹: {currentAmmo}，剩余备弹: {reserveAmmo}");
     }
 
@@ -83,8 +93,26 @@ public class PlayerShooting : MonoBehaviour
         {
             hasWeapon = true; // 激活武器状态
             Debug.Log("捡起手枪！可以开始射击了。");
-
+            UpdateAmmoUI();
             Destroy(other.gameObject); // 让地上的物资箱消失
+        }
+    }
+
+
+    void UpdateAmmoUI()
+    {
+        // 健壮性检查：防止忘记拖入 UI 组件导致游戏崩溃
+        if (ammoText == null) return;
+
+        // 如果还没有捡到武器，屏幕上什么都不显示（或者显示横杠 --）
+        if (!hasWeapon)
+        {
+            ammoText.text = "- / -";
+        }
+        else
+        {
+            // 将数字拼接成字符串：例如 "7" + " / " + "28" = "7 / 28"
+            ammoText.text = currentAmmo.ToString() + " / " + reserveAmmo.ToString();
         }
     }
 }
