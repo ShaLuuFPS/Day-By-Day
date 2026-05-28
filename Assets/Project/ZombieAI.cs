@@ -9,6 +9,14 @@ public class ZombieAI : MonoBehaviour
     private Transform playerTransform;   // 玩家的坐标组件
     private Rigidbody rb;                // 刚体组件
 
+    [Header("攻击设置")]
+    public float attackDamage = 10f; // 僵尸每次攻击扣多少血
+    public float attackRate = 1.0f;  // 攻击频率（秒/次，比如 1 秒咬一次）
+    private float nextAttackTime = 0f; // 下一次可以攻击的时间
+
+
+
+
     void Start()
     {
         // 自动获取自身的刚体组件
@@ -51,6 +59,29 @@ public class ZombieAI : MonoBehaviour
             targetVelocity.y = rb.linearVelocity.y; // 保持原本的垂直速度（防止影响重力）
             
             rb.linearVelocity = targetVelocity;
+        }
+    }
+
+    // 当僵尸持续撞击（贴着）有碰撞体的主角时，这个函数会自动高频触发
+    void OnCollisionStay(Collision collision)
+    {
+        // 检查撞到的是不是玩家
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            // 检查攻击冷却时间是否到了
+            if (Time.time >= nextAttackTime)
+            {
+                // 尝试获取玩家身上的 PlayerHealth 脚本
+                PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
+                if (playerHealth != null)
+                {
+                    // 狠狠给玩家来一爪子！
+                    playerHealth.TakeDamage(attackDamage);
+
+                    // 刷新下次攻击的冷却时间戳
+                    nextAttackTime = Time.time + attackRate;
+                }
+            }
         }
     }
 }
