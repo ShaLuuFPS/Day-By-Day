@@ -1,31 +1,61 @@
 using UnityEngine;
-using UnityEngine.UI; // 必须引入 UI 命名空间
+using UnityEngine.UI;
 
-public class PlayerHealth : MonoBehaviour
+// ✨ 核心重构：让 PlayerHealth 挂上 IResettable 契约！
+public class PlayerHealth : MonoBehaviour, IResettable
 {
     [Header("生命值设置")]
-    public float maxHealth = 100f;   // 主角最大血量
-    private float currentHealth;    // 主角当前血量
+    public float maxHealth = 100f;
+    private float currentHealth;
 
     [Header("UI 连线")]
-    public Image healthBarFill;     // 拖入你刚刚创建的 Fill 图片
+    public Image healthBarFill;
+    public GameObject gameOverPanel;
+
+    [Header("重置解耦：管理器连线")]
+    public GameObject spawnerManager;
+
+    private Vector3 playerInitialPosition; // 记录玩家初始位置
+
+    // 供其他脚本（PlayerMovement / PlayerShooting）读取：主角是否已经阵亡
+    public bool IsDead { get; private set; } = false;
 
     void Start()
     {
-        currentHealth = maxHealth;
-        UpdateHealthBar(); // 游戏开始初始化血条
+        // 游戏刚开始时，记录出生点
+        playerInitialPosition = transform.position;
+
+        // 游戏刚启动时的初始化，现在也可以直接顺从契约调用了
+        ResetData();
     }
 
-    // 【公开受伤害接口】：当被僵尸咬到时，由僵尸调用这个函数
+    // ✨ 核心重构：彻底取缔 InitGame()，让它变成标准的契约实现！
+    public void ResetData()
+    {
+        IsDead = false;
+        currentHealth = maxHealth;
+        UpdateHealthBar();
+
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(false);
+        }
+
+        // 核心复位：把 Unity 的游戏时间轴恢复正常
+        Time.timeScale = 1f;
+
+        Debug.Log("【数据重置】玩家生命值已回满，游戏时间轴恢复！");
+    }
+
     public void TakeDamage(float damageAmount)
     {
+        if (currentHealth <= 0) return;
+
         currentHealth -= damageAmount;
-        // 限制血量不能低于 0
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
 
         Debug.Log($"玩家受到伤害！剩余血量: {currentHealth}/{maxHealth}");
 
-        // 同步刷新屏幕上的血条
         UpdateHealthBar();
 
         if (currentHealth <= 0)
@@ -34,18 +64,64 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
-    // 刷新血条 UI
     void UpdateHealthBar()
     {
         if (healthBarFill == null) return;
-
-        // 计算血量百分比（Filled 模式的 fillAmount 刚好接收 0 到 1 之间的数字）
         healthBarFill.fillAmount = currentHealth / maxHealth;
     }
 
     void PlayerDie()
     {
-        Debug.Log("游戏结束，玩家已死亡！");
-        // 这里后期可以触发“显示游戏失败面板”或“重新加载场景”
+        IsDead = true;
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+        }
+
+        // 死亡时时间静止
+        Time.timeScale = 0f;
+        Debug.Log("玩家已阵亡！游戏定格。");
+    }
+
+    // ⭐⭐⭐ 核心重置函数：绑定给“重新开始”按钮
+    public void RestartGame()
+    {
+        Debug.Log("【开始一键清理重置现场...】");
+
+        // 1. 物理清场：毁灭 SpawnerManager 下的所有僵尸
+        if (spawnerManager != null)
+        {
+            foreach (Transform child in spawnerManager.transform)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        // 2. 玩家物理复位：把玩家坐标拉回初始点
+        transform.position = playerInitialPosition;
+
+        // 3. 刚体速度物理清空（防止带着死亡前的速度惯性滑行）
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        // 4. ✨【一键降维广播】
+        // 找出场景中所有的 MonoBehaviour 脚本（包括死后被禁用的）
+        MonoBehaviour[] allScripts = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include);
+
+        // 遍历每一个脚本，谁签了契约谁就自理
+        foreach (MonoBehaviour mono in allScripts)
+        {
+            if (mono is IResettable resettableTarget)
+            {
+                // 当循环扫描到自己（PlayerHealth）时，它也会自动调用上面的 ResetData()！
+                resettableTarget.ResetData();
+            }
+        }
+
+        Debug.Log("【重置完毕！】新一轮战斗开始。");
     }
 }

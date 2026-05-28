@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class EnemySpawner : MonoBehaviour
+public class EnemySpawner : MonoBehaviour,IResettable
 {
     [Header("生成配置")]
     public GameObject zombiePrefab;      // 你的僵尸预制体（ZombieTarget）
@@ -16,6 +16,8 @@ public class EnemySpawner : MonoBehaviour
     public float spawnYHeight = 3f;    // 生成时的 Y 轴高度（确保僵尸脚踩在地面上）
 
     private float timer = 0f;
+
+    
 
     void Start()
     {
@@ -46,6 +48,13 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
+    public void ResetData()
+    {
+        timer = 0f;
+        Debug.Log("【数据重置】刷怪笼计时器已自我复位！");
+    }
+
+
     void SpawnZombie()
     {
         // 1. 在圆形范围内随机生成一个 2D 方向向量
@@ -61,11 +70,12 @@ public class EnemySpawner : MonoBehaviour
         // 强制修正高度，防止僵尸出生在地下或者天上
         spawnPosition.y = spawnYHeight;
 
-        // 4. 精准实例化（创建）僵尸
+        // ✨ 新代码：生成、改名、并强制抓进 Manager 的肚子里
         GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, Quaternion.identity);
-
-        // 给生成的僵尸改个名字，方便在层级面板看数量
         newZombie.name = "Spawned_Zombie";
+
+        // 绝对防御行：强制让新出生的僵尸认当前挂着 Spawner 的物体当亲爹！
+        newZombie.transform.SetParent(this.transform);
     }
 
     // ⭐ 调试小福利：在场景视图里用线条画出内圈和外圈，方便肉眼看刷怪范围

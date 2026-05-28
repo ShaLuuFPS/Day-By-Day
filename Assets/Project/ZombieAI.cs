@@ -11,14 +11,13 @@ public class ZombieAI : MonoBehaviour
     public float attackDamage = 10f;     // 每次攻击扣多少血
     public float attackRate = 1.0f;      // 攻击冷却时间（1秒/次）
 
-    private float nextAttackTime = 0f;   // 每个敌人独享的下一次攻击时间戳
+    private float attackCooldownTimer = 0f;  //冷却计时器
     private Transform playerTransform;   // 玩家的坐标组件
     private Rigidbody rb;                // 刚体组件
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
     }
 
     void FixedUpdate()
@@ -41,8 +40,7 @@ public class ZombieAI : MonoBehaviour
 
         // 1. 计算与玩家的距离和方向
         Vector3 directionToPlayer = playerTransform.position - transform.position;
-
-        directionToPlayer.y = 0f; // 抹平高度差
+        directionToPlayer.y = 0f;
         float currentDistance = directionToPlayer.magnitude;
 
         // 2. 始终死死盯着玩家
@@ -52,9 +50,15 @@ public class ZombieAI : MonoBehaviour
             rb.MoveRotation(Quaternion.Slerp(transform.rotation, targetRotation, Time.fixedDeltaTime * 10f));
         }
 
+        // ✨ 核心美化：冷却时间在每个物理帧里自己往下扣减，直到扣到 0 为止
+        if (attackCooldownTimer > 0f)
+        {
+            attackCooldownTimer -= Time.fixedDeltaTime;
+        }
+
         // 3. 【判定 A：是否触发攻击】
-        // 只要玩家进入了攻击范围，且 1 秒的冷却时间到了
-        if (currentDistance <= attackRange && Time.time >= nextAttackTime)
+        // 距离够了，且冷却计时器已经归零（可以攻击了）
+        if (currentDistance <= attackRange && attackCooldownTimer <= 0f)
         {
             ExecuteAttack();
         }
@@ -62,12 +66,10 @@ public class ZombieAI : MonoBehaviour
         // 4. 【判定 B：是否停止移动】
         if (currentDistance <= stoppingDistance)
         {
-            // 到了停止距离，立马立定
             rb.linearVelocity = Vector3.zero;
         }
         else
         {
-            // 没到距离，继续前进
             Vector3 targetVelocity = directionToPlayer.normalized * moveSpeed;
             targetVelocity.y = rb.linearVelocity.y;
             rb.linearVelocity = targetVelocity;
@@ -77,18 +79,16 @@ public class ZombieAI : MonoBehaviour
     // 执行攻击的私有函数
     void ExecuteAttack()
     {
-        // 尝试获取玩家的血量组件
         PlayerHealth playerHealth = playerTransform.GetComponent<PlayerHealth>();
         if (playerHealth != null)
         {
-            // 狠狠咬一口
             playerHealth.TakeDamage(attackDamage);
 
-            // ⭐ 核心复位：刷新【当前这只僵尸】的专属冷却时间戳
-            // Time.time 是游戏运行的总时间，加上 1 秒就是它下一次能打的时间
-            nextAttackTime = Time.time + attackRate;
+            // ✨ 核心美化：攻击完，直接把冷却计时器充满（设为 1.0 秒）
+            attackCooldownTimer = attackRate;
 
-            Debug.Log($"{gameObject.name} 发动了攻击！下次攻击在 {nextAttackTime} 秒后");
+            // 现在的 Log 极其纯净，永远只会在 0 到 1 之间复位，再也不会打印三十几秒那种大数字了！
+            Debug.Log($"{gameObject.name} 发动了攻击！冷却重置为 {attackCooldownTimer} 秒");
         }
     }
 }

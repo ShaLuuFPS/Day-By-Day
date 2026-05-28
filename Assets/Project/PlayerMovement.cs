@@ -6,8 +6,20 @@ public class PlayerMovement : MonoBehaviour
     public float moveSpeed = 5f;
     private Vector3 moveDirection;
 
+    private PlayerHealth playerHealth;
+
+    void Start()
+    {
+        // 自动抓取身上挂着的血量脚本
+        playerHealth = GetComponent<PlayerHealth>();
+    }
     void Update()
     {
+        // 🚨【核心防御】：如果血量脚本存在，且判定玩家已经死了，直接拦截！后面任何移动、转头看鼠标的逻辑碰都别想碰
+        if (playerHealth != null && playerHealth.IsDead)
+        {
+            return;
+        }
         // 1. 移动逻辑（保持不变）
         float moveX = 0f;
         float moveZ = 0f;

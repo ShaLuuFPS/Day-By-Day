@@ -16,14 +16,22 @@ public class PlayerShooting : MonoBehaviour
     [Header("UI 元素")]
     public TextMeshProUGUI ammoText;
 
+    private PlayerHealth playerHealth;
+
     void Start()
     {
+        playerHealth = GetComponent<PlayerHealth>();
         UpdateAmmoUI();
     }
 
 
     void Update()
     {
+        // 🚨【火力拦截】：死人是不能扣动扳机和换弹的！
+        if (playerHealth != null && playerHealth.IsDead)
+        {
+            return;
+        }
         // 如果还没捡到枪，后面所有的射击、换弹逻辑都不执行
         if (!hasWeapon) return;
 
