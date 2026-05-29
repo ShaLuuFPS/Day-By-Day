@@ -1,126 +1,176 @@
 using UnityEngine;
-using UnityEngine.InputSystem; // 使用新输入系统
+using UnityEngine.InputSystem;
 using TMPro;
-public class PlayerShooting : MonoBehaviour
+using UnityEngine.UI;
+using System.Collections;
+
+public class PlayerShooting : MonoBehaviour, IResettable
 {
-    [Header("枪械状态")]
-    public bool hasWeapon = false;     // 是否已经捡到枪
-    public int currentAmmo = 7;        // 当前弹夹子弹（上限7）
+    [Header("枪械基础设置")]
+    public string weaponName = "手枪";
     public int maxMagazineSize = 7;    // 弹夹容量上限
     public int reserveAmmo = 28;       // 备弹总量
+    public float reloadTime = 1.5f;
+
+    [Header("枪械实时状态")]
+    public bool hasWeapon = false;     // 是否已经捡到枪
+    public int currentAmmo = 7;        // 当前弹夹子弹
+    private bool isReloading = false;
 
     [Header("射击预制体")]
-    public GameObject bulletPrefab;    // 子弹的预制体（等会制作）
-    public Transform firePoint;        // 枪口位置（也就是角色的face/nose）
+    public GameObject bulletPrefab;    // 子弹预制体
+    public Transform firePoint;        // 枪口位置
 
-    [Header("UI 元素")]
-    public TextMeshProUGUI ammoText;
-
-    private PlayerHealth playerHealth;
+    [Header("🧩 UI 独立模块连线")]
+    public TextMeshProUGUI weaponNameText;  // 模块 1：只负责武器名字
+    public TextMeshProUGUI ammoCountText;   // 模块 2：只负责弹药数字（7 / 28）
+    public TextMeshProUGUI reloadStatusText;// 模块 3：只负责换弹状态提示（正在换弹/请按R）
+    public Slider reloadSlider;
 
     void Start()
     {
-        playerHealth = GetComponent<PlayerHealth>();
-        UpdateAmmoUI();
+        UpdateWeaponUI(); // 初始化所有独立的 UI 模块
+        if (reloadSlider != null) reloadSlider.gameObject.SetActive(false);
     }
-
 
     void Update()
     {
-        // 🚨【火力拦截】：死人是不能扣动扳机和换弹的！
-        if (playerHealth != null && playerHealth.IsDead)
-        {
-            return;
-        }
-        // 如果还没捡到枪，后面所有的射击、换弹逻辑都不执行
-        if (!hasWeapon) return;
+        if (!hasWeapon) return; //
+
+        // 如果正在换弹，拦截开火和重复换弹
+        if (isReloading) return;
 
         // 1. 监听鼠标左键开火
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current.leftButton.wasPressedThisFrame) //
         {
-            Shoot();
+            Shoot(); //
         }
 
         // 2. 监听 R 键换弹
-        if (Keyboard.current.rKey.wasPressedThisFrame)
+        if (Keyboard.current.rKey.wasPressedThisFrame) //
         {
-            Reload();
+            if (currentAmmo < maxMagazineSize && reserveAmmo > 0) //
+            {
+                StartCoroutine(ReloadRoutine());
+            }
         }
     }
 
     void Shoot()
     {
-        // 检查弹夹是否有弹药
-        if (currentAmmo > 0)
+        if (currentAmmo > 0) //
         {
-            currentAmmo--; // 扣除一发子弹
-            Debug.Log($"开火！弹夹剩余: {currentAmmo}/{maxMagazineSize}");
-
-            UpdateAmmoUI();
-            // 在枪口位置（firePoint），以枪口的旋转方向，克隆（生成）一颗子弹
-            Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+            currentAmmo--; //
+            UpdateWeaponUI(); // 射击后，只刷新弹药数字
+            Instantiate(bulletPrefab, firePoint.position, firePoint.rotation); //
         }
         else
         {
-            Debug.Log("没子弹了，请按 R 换弹！");
+            // 模块 3 闪亮登场：空弹开火时，只在提示模块显示警告，不干扰名字和数字
+            if (reloadStatusText != null)
+            {
+                reloadStatusText.text = "没子弹了，请按 R 换弹！";
+            }
         }
     }
 
-    void Reload()
+    IEnumerator ReloadRoutine()
     {
-        // 如果弹夹已经满了，或者已经没有备弹了，就不需要换弹
-        if (currentAmmo == maxMagazineSize || reserveAmmo <= 0) return;
+        isReloading = true;
 
-        // 核心逻辑：把当前弹夹剩下的子弹退回备弹
-        reserveAmmo += currentAmmo;
-        currentAmmo = 0; // 此时弹夹清空
-
-        // 计算需要从备弹里取多少发子弹（通常是 7 发）
-        int ammoNeeded = maxMagazineSize;
-
-        // 如果备弹数量足够填满弹夹
-        if (reserveAmmo >= ammoNeeded)
+        // 激活进度条 UI
+        if (reloadSlider != null)
         {
-            currentAmmo = ammoNeeded;
-            reserveAmmo -= ammoNeeded;
+            reloadSlider.value = 0f;
+            reloadSlider.gameObject.SetActive(true);
         }
-        else // 如果备弹不够填满弹夹了（比如只剩3发备弹）
+
+        float elapsed = 0f;
+        while (elapsed < reloadTime)
         {
-            currentAmmo = reserveAmmo;
-            reserveAmmo = 0;
+            elapsed += Time.deltaTime;
+
+            if (reloadSlider != null)
+            {
+                reloadSlider.value = elapsed / reloadTime;
+            }
+
+            // 模块 3 独立控制：在屏幕中央动态打印倒计时，完全不影响右下角弹药数
+            if (reloadStatusText != null)
+            {
+                reloadStatusText.text = $"正在换弹... ({(reloadTime - elapsed).ToString("F1")}s)";
+            }
+
+            yield return null;
         }
-        UpdateAmmoUI();
-        Debug.Log($"换弹成功！当前弹夹: {currentAmmo}，剩余备弹: {reserveAmmo}");
+
+        // --- ⏳ 时间到！执行数值交换 ---
+        reserveAmmo += currentAmmo; //
+        currentAmmo = 0; //
+        int ammoNeeded = maxMagazineSize; //
+
+        if (reserveAmmo >= ammoNeeded) //
+        {
+            currentAmmo = ammoNeeded; //
+            reserveAmmo -= ammoNeeded; //
+        }
+        else //
+        {
+            currentAmmo = reserveAmmo; //
+            reserveAmmo = 0; //
+        }
+
+        // 换弹完毕，清理提示模块和进度条
+        if (reloadSlider != null) reloadSlider.gameObject.SetActive(false);
+        if (reloadStatusText != null) reloadStatusText.text = ""; // 清空换弹提示
+
+        isReloading = false;
+        UpdateWeaponUI(); // 最终全面刷新一次 UI
     }
 
-    // Unity 内置的触发检测函数：当有物体撞进自己的 Trigger 时自动触发
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other) //
     {
-        // 检查撞到的物体是不是叫 "GunPickup"
-        if (other.gameObject.name == "GunPickup")
+        if (other.gameObject.name == "GunPickup") //
         {
-            hasWeapon = true; // 激活武器状态
-            Debug.Log("捡起手枪！可以开始射击了。");
-            UpdateAmmoUI();
-            Destroy(other.gameObject); // 让地上的物资箱消失
+            hasWeapon = true; //
+            UpdateWeaponUI(); //
+            Destroy(other.gameObject); //
         }
     }
 
-
-    void UpdateAmmoUI()
+    // 🎯 核心重构：三大模块各司其职，各回各家
+    void UpdateWeaponUI()
     {
-        // 健壮性检查：防止忘记拖入 UI 组件导致游戏崩溃
-        if (ammoText == null) return;
+        // 1. 名字模块处理
+        if (weaponNameText != null)
+        {
+            weaponNameText.text = hasWeapon ? weaponName : "空手";
+        }
 
-        // 如果还没有捡到武器，屏幕上什么都不显示（或者显示横杠 --）
-        if (!hasWeapon)
+        // 2. 弹药模块处理
+        if (ammoCountText != null)
         {
-            ammoText.text = "- / -";
+            ammoCountText.text = hasWeapon ? $"{currentAmmo} / {reserveAmmo}" : "- / -";
         }
-        else
+
+        // 3. 提示模块处理：平时默认清空
+        if (hasWeapon && currentAmmo > 0 && !isReloading)
         {
-            // 将数字拼接成字符串：例如 "7" + " / " + "28" = "7 / 28"
-            ammoText.text = currentAmmo.ToString() + " / " + reserveAmmo.ToString();
+            if (reloadStatusText != null) reloadStatusText.text = "";
         }
+    }
+
+    // 契约重置：如果死后重置，强行洗白所有 UI 模块现场
+    public void ResetData()
+    {
+        StopAllCoroutines();
+
+        if (reloadSlider != null) reloadSlider.gameObject.SetActive(false);
+        if (reloadStatusText != null) reloadStatusText.text = ""; // 清空提示
+
+        isReloading = false;
+        currentAmmo = maxMagazineSize;
+        reserveAmmo = 28;
+        UpdateWeaponUI();
     }
 }
