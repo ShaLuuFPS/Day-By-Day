@@ -12,16 +12,23 @@ public class PlayerShooting : MonoBehaviour, IResettable
     [Header("枪械实时状态")]
     public bool hasWeapon = false;
     public int currentAmmo;
-    public int reserveAmmo;            // 动态初始化
+    public int reserveAmmo;
     public bool isReloading { get; private set; } = false;
 
     [Header("射击物理枪口")]
     public Transform firePoint;
 
     private float nextFireTime = 0f;
-
-    // 记录玩家拥有过的武器，用来判断是不是第一次摸到该武器类型
     private static HashSet<string> unlockedWeapons = new HashSet<string>();
+
+    // 🌟 交互核心防抖与雷达队列
+    private static float globalPickupTimer = 0f;
+    private const float PICKUP_COOLDOWN = 1.0f;
+    private List<IInteractable> nearbyInteractables = new List<IInteractable>(); // 附近所有的交互物
+
+    // 🌟 交互事件广播：告诉 UI 该显示什么字，或者隐藏 UI
+    public static event Action<string> OnShowInteractionUI;
+    public static event Action OnHideInteractionUI;
 
     public static event Action OnAmmoChanged;
     public static event Action<float> OnReloading;
@@ -48,9 +55,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void Update()
     {
+        // 1. 正常的射击与换弹逻辑
+        HandleShootingAndReloading();
+
+        // 2. 🌟 通用交互检测
+        HandleUniversalInteraction();
+    }
+
+    private void HandleShootingAndReloading()
+    {
         if (!hasWeapon || currentWeaponData == null || isReloading) return;
 
-        // 射击输入监听
         if (currentWeaponData.isAutomatic)
         {
             if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
@@ -67,130 +82,114 @@ public class PlayerShooting : MonoBehaviour, IResettable
             }
         }
 
-        // 换弹键盘监听
-        if (Keyboard.current.rKey.wasPressedThisFrame)
+        if (Keyboard.current.rKey.wasPressedThisFrame && currentAmmo < maxMagazineSize && reserveAmmo > 0)
         {
-            if (currentAmmo < maxMagazineSize && reserveAmmo > 0)
-            {
-                StartCoroutine(ReloadRoutine());
-            }
+            StartCoroutine(ReloadRoutine());
         }
     }
 
-    void Shoot()
+    // 🌟 核心函数：处理通用交互与多物体冲突
+    private void HandleUniversalInteraction()
     {
-        if (currentAmmo > 0)
-        {
-            currentAmmo--;
-            OnAmmoChanged?.Invoke();
+        // 清理列表中可能已经被 Destroy 掉的无效残留（安全防护）
+        nearbyInteractables.RemoveAll(x => x == null || (x is MonoBehaviour mb && mb == null));
 
-            if (currentWeaponData.bulletPrefab != null && firePoint != null)
+        if (nearbyInteractables.Count == 0)
+        {
+            OnHideInteractionUI?.Invoke();
+            return;
+        }
+
+        // 💡 冲突破局：遍历列表，通过计算物理距离，死死咬住【离玩家最近的那一个】！
+        IInteractable closestInteractable = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (var interactable in nearbyInteractables)
+        {
+            if (interactable is MonoBehaviour mb)
             {
-                GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation);
-                Bullet bulletScript = bulletObj.GetComponent<Bullet>();
-                if (bulletScript != null)
+                float dist = Vector3.Distance(transform.position, mb.transform.position);
+                if (dist < closestDistance)
                 {
-                    bulletScript.Initialize(currentWeaponData.damage);
+                    closestDistance = dist;
+                    closestInteractable = interactable;
                 }
             }
         }
-        else
+
+        if (closestInteractable == null) return;
+
+        // 通知 UI 实时刷新这个最近物体的提示文字（不管它是门还是枪！）
+        OnShowInteractionUI?.Invoke(closestInteractable.InteractionPrompt);
+
+        // 监听按 E 键
+        if (Keyboard.current.eKey.wasPressedThisFrame && Time.time >= globalPickupTimer)
         {
-            OnEmptyClipFired?.Invoke();
+            globalPickupTimer = Time.time + PICKUP_COOLDOWN;
+
+            // 执行交互前，先把它从队列里移除（因为它马上要被处理或传走）
+            IInteractable target = closestInteractable;
+            nearbyInteractables.Remove(target);
+
+            // 砰！触发这个物体特有的 Interact 逻辑
+            target.Interact(this);
         }
     }
 
-    IEnumerator ReloadRoutine()
-    {
-        isReloading = true;
-        float elapsed = 0f;
-        while (elapsed < reloadTime)
-        {
-            elapsed += Time.deltaTime;
-            OnReloading?.Invoke(elapsed);
-            yield return null;
-        }
-
-        reserveAmmo += currentAmmo;
-        currentAmmo = 0;
-        int ammoNeeded = maxMagazineSize;
-
-        if (reserveAmmo >= ammoNeeded)
-        {
-            currentAmmo = ammoNeeded;
-            reserveAmmo -= ammoNeeded;
-        }
-        else
-        {
-            currentAmmo = reserveAmmo;
-            reserveAmmo = 0;
-        }
-
-        isReloading = false;
-        OnReloadComplete?.Invoke();
-        OnAmmoChanged?.Invoke();
-    }
-
-    // 🌟 核心：检测走入地上的武器碰撞箱
+    // 🌟 只要挂了 IInteractable 接口的物体调大了触发箱，走进去就会被雷达捕获
     private void OnTriggerEnter(Collider other)
     {
-        // 确保踩到的是挂有新脚本的真实地面武器
-        GunPickup groundGun = other.GetComponent<GunPickup>();
-        if (groundGun == null || groundGun.weaponConfig == null) return;
+        IInteractable interactable = other.GetComponent<IInteractable>();
+        if (interactable != null && !nearbyInteractables.Contains(interactable))
+        {
+            nearbyInteractables.Add(interactable);
+        }
+    }
 
-        // 情况一：如果玩家当前空手（hasWeapon为false），直接捡起它
+    private void OnTriggerExit(Collider other)
+    {
+        IInteractable interactable = other.GetComponent<IInteractable>();
+        if (interactable != null && nearbyInteractables.Contains(interactable))
+        {
+            nearbyInteractables.Remove(interactable);
+        }
+    }
+
+    // 供外部枪械调用的核心数值交换
+    public void ExecuteInteraction(GunPickup groundGun, GameObject groundGameObject)
+    {
         if (!hasWeapon)
         {
             currentWeaponData = groundGun.weaponConfig;
             currentAmmo = groundGun.runtimeAmmo;
             reserveAmmo = groundGun.runtimeReserve;
             hasWeapon = true;
-
             if (!unlockedWeapons.Contains(weaponName)) unlockedWeapons.Add(weaponName);
-
             OnAmmoChanged?.Invoke();
-            Destroy(other.gameObject); // 销毁地上的方块
+            Destroy(groundGameObject);
             return;
         }
 
-        // 情况二：玩家手里有枪，且踩到了【同款枪】 $\rightarrow$ 触发你的细节设计（自动吸弹）
         if (groundGun.weaponConfig.weaponName == this.weaponName)
         {
-            // 1. 瞬间补满当前弹夹
             currentAmmo = maxMagazineSize;
-
-            // 2. 补充两个弹夹的备弹量
             int bonusAmmo = groundGun.weaponConfig.maxMagazineSize * 2;
             reserveAmmo += bonusAmmo;
-
-            // 3. 限制不能溢出配置的“最大默认备弹量”（比如突击步枪最多带90发备弹）
-            if (reserveAmmo > groundGun.weaponConfig.defaultReserveAmmo)
-            {
-                reserveAmmo = groundGun.weaponConfig.defaultReserveAmmo;
-            }
-
+            if (reserveAmmo > groundGun.weaponConfig.defaultReserveAmmo) reserveAmmo = groundGun.weaponConfig.defaultReserveAmmo;
             OnAmmoChanged?.Invoke();
-            Destroy(other.gameObject); // 吸收完毕，销毁地上的方块
-            Debug.Log($"[吸收同款武器] 弹夹已回满，备弹补充了 {bonusAmmo} 发！");
+            Destroy(groundGameObject);
         }
-        // 情况三：玩家手里有枪，且踩到了【不同种类的枪】 $\rightarrow$ 优雅换枪（灵魂互换）
         else
         {
-            // 如果玩家正在换弹，不允许执行换枪，防止协程卡死
             if (isReloading) return;
 
-            Debug.Log($"[触发武器交换] 正在将手里的 {this.weaponName} 替换为地面的 {groundGun.weaponConfig.weaponName}");
-
-            // 1. 暂存玩家手里这把枪的真实数据包
             WeaponData playerOldConfig = this.currentWeaponData;
             int playerOldAmmo = this.currentAmmo;
             int playerOldReserve = this.reserveAmmo;
 
-            // 2. 将地面枪的数据“吸入”玩家的主角容器里
             this.currentWeaponData = groundGun.weaponConfig;
             this.currentAmmo = groundGun.runtimeAmmo;
 
-            // 绝妙细节：如果玩家是历史上第一次拿到这把新枪，强行赋予它满额的默认备弹；否则拿取地上的备弹
             if (!unlockedWeapons.Contains(weaponName))
             {
                 unlockedWeapons.Add(weaponName);
@@ -201,30 +200,19 @@ public class PlayerShooting : MonoBehaviour, IResettable
                 this.reserveAmmo = groundGun.runtimeReserve;
             }
 
-            // 3. 将玩家原本旧枪的数据“灌回”地上的方块里，保留给未来！
             groundGun.Initialize(playerOldConfig, playerOldAmmo, playerOldReserve);
+            groundGameObject.transform.position = transform.position + transform.forward * 1.8f + Vector3.up * 0.2f;
+            groundGun.RefreshPickupState();
 
-            // 4. 让地上的方块在玩家脚下弹开一点点（防止连续触发换枪），并重置颜色
-            other.transform.position = transform.position + transform.forward * 1.5f + Vector3.up * 0.5f;
-            groundGun.SendMessage("Start"); // 强行让地上的方块重新根据新枪配置刷一次颜色！
+            // 换枪后，把被吐出来的旧枪重新加回附近雷达列表，允许玩家等1秒后重新换回来
+            IInteractable newGroundInteractable = groundGameObject.GetComponent<IInteractable>();
+            if (newGroundInteractable != null) nearbyInteractables.Add(newGroundInteractable);
 
-            // 5. 广播界面刷新
             OnAmmoChanged?.Invoke();
         }
     }
 
-    public void ResetData()
-    {
-        OnReloadComplete?.Invoke();
-        StopAllCoroutines();
-        isReloading = false;
-
-        if (currentWeaponData != null)
-        {
-            currentAmmo = maxMagazineSize;
-            reserveAmmo = currentWeaponData.defaultReserveAmmo;
-        }
-
-        OnAmmoChanged?.Invoke();
-    }
+    void Shoot() { /* 保持原样... */ if (currentAmmo > 0) { currentAmmo--; OnAmmoChanged?.Invoke(); if (currentWeaponData.bulletPrefab != null && firePoint != null) { GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation); Bullet bulletScript = bulletObj.GetComponent<Bullet>(); if (bulletScript != null) bulletScript.Initialize(currentWeaponData.damage); } } else { OnEmptyClipFired?.Invoke(); } }
+    IEnumerator ReloadRoutine() { isReloading = true; float elapsed = 0f; while (elapsed < reloadTime) { elapsed += Time.deltaTime; OnReloading?.Invoke(elapsed); yield return null; } reserveAmmo += currentAmmo; currentAmmo = 0; int ammoNeeded = maxMagazineSize; if (reserveAmmo >= ammoNeeded) { currentAmmo = ammoNeeded; reserveAmmo -= ammoNeeded; } else { currentAmmo = reserveAmmo; reserveAmmo = 0; } isReloading = false; OnReloadComplete?.Invoke(); OnAmmoChanged?.Invoke(); }
+    public void ResetData() { OnReloadComplete?.Invoke(); StopAllCoroutines(); isReloading = false; nearbyInteractables.Clear(); if (currentWeaponData != null) { currentAmmo = maxMagazineSize; reserveAmmo = currentWeaponData.defaultReserveAmmo; } OnAmmoChanged?.Invoke(); }
 }
