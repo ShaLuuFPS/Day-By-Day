@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System;
 using System.Collections;
-using System.Collections.Generic;// 🌟 引入集合，用来记录捡枪历史
+using System.Collections.Generic;
 
 public class PlayerShooting : MonoBehaviour, IResettable
 {
@@ -12,7 +12,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
     [Header("枪械实时状态")]
     public bool hasWeapon = false;
     public int currentAmmo;
-    public int reserveAmmo;            // 🌟 变成动态初始化，不需要在面板写死
+    public int reserveAmmo;            // 动态初始化
     public bool isReloading { get; private set; } = false;
 
     [Header("射击物理枪口")]
@@ -20,7 +20,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     private float nextFireTime = 0f;
 
-    // 🌟 核心：记录玩家【生前】曾经拥有过哪些武器的名字（防止重复白嫖备弹）
+    // 记录玩家拥有过的武器，用来判断是不是第一次摸到该武器类型
     private static HashSet<string> unlockedWeapons = new HashSet<string>();
 
     public static event Action OnAmmoChanged;
@@ -37,7 +37,6 @@ public class PlayerShooting : MonoBehaviour, IResettable
         if (currentWeaponData != null)
         {
             currentAmmo = maxMagazineSize;
-            // 如果初始手里有枪，默认视作已解锁，并给予其默认备弹
             if (!unlockedWeapons.Contains(weaponName))
             {
                 unlockedWeapons.Add(weaponName);
@@ -51,6 +50,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
     {
         if (!hasWeapon || currentWeaponData == null || isReloading) return;
 
+        // 射击输入监听
         if (currentWeaponData.isAutomatic)
         {
             if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
@@ -67,6 +67,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
             }
         }
 
+        // 换弹键盘监听
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
             if (currentAmmo < maxMagazineSize && reserveAmmo > 0)
@@ -85,10 +86,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
             if (currentWeaponData.bulletPrefab != null && firePoint != null)
             {
-                // 1. 生成子弹
                 GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation);
-
-                // 2. 🌟 核心注入：获取子弹身上的脚本，直接把配置文件里的伤害灌进去！
                 Bullet bulletScript = bulletObj.GetComponent<Bullet>();
                 if (bulletScript != null)
                 {
@@ -133,35 +131,88 @@ public class PlayerShooting : MonoBehaviour, IResettable
         OnAmmoChanged?.Invoke();
     }
 
+    // 🌟 核心：检测走入地上的武器碰撞箱
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.name == "GunPickup")
+        // 确保踩到的是挂有新脚本的真实地面武器
+        GunPickup groundGun = other.GetComponent<GunPickup>();
+        if (groundGun == null || groundGun.weaponConfig == null) return;
+
+        // 情况一：如果玩家当前空手（hasWeapon为false），直接捡起它
+        if (!hasWeapon)
         {
+            currentWeaponData = groundGun.weaponConfig;
+            currentAmmo = groundGun.runtimeAmmo;
+            reserveAmmo = groundGun.runtimeReserve;
             hasWeapon = true;
 
-            if (currentWeaponData != null)
+            if (!unlockedWeapons.Contains(weaponName)) unlockedWeapons.Add(weaponName);
+
+            OnAmmoChanged?.Invoke();
+            Destroy(other.gameObject); // 销毁地上的方块
+            return;
+        }
+
+        // 情况二：玩家手里有枪，且踩到了【同款枪】 $\rightarrow$ 触发你的细节设计（自动吸弹）
+        if (groundGun.weaponConfig.weaponName == this.weaponName)
+        {
+            // 1. 瞬间补满当前弹夹
+            currentAmmo = maxMagazineSize;
+
+            // 2. 补充两个弹夹的备弹量
+            int bonusAmmo = groundGun.weaponConfig.maxMagazineSize * 2;
+            reserveAmmo += bonusAmmo;
+
+            // 3. 限制不能溢出配置的“最大默认备弹量”（比如突击步枪最多带90发备弹）
+            if (reserveAmmo > groundGun.weaponConfig.defaultReserveAmmo)
             {
-                // 🌟 绝妙逻辑判断：看清单里有没有这把枪的名字
-                if (!unlockedWeapons.Contains(weaponName))
-                {
-                    // 第一次捡到：永久记录名字，并赠送初始备弹！
-                    unlockedWeapons.Add(weaponName);
-                    reserveAmmo = currentWeaponData.defaultReserveAmmo;
-                    currentAmmo = maxMagazineSize;
-                }
-                else
-                {
-                    // 再次拿到同款枪：只回满当前的弹夹子弹，绝对不触发额外的 reserveAmmo 赠送！
-                    currentAmmo = maxMagazineSize;
-                }
+                reserveAmmo = groundGun.weaponConfig.defaultReserveAmmo;
             }
 
             OnAmmoChanged?.Invoke();
-            Destroy(other.gameObject);
+            Destroy(other.gameObject); // 吸收完毕，销毁地上的方块
+            Debug.Log($"[吸收同款武器] 弹夹已回满，备弹补充了 {bonusAmmo} 发！");
+        }
+        // 情况三：玩家手里有枪，且踩到了【不同种类的枪】 $\rightarrow$ 优雅换枪（灵魂互换）
+        else
+        {
+            // 如果玩家正在换弹，不允许执行换枪，防止协程卡死
+            if (isReloading) return;
+
+            Debug.Log($"[触发武器交换] 正在将手里的 {this.weaponName} 替换为地面的 {groundGun.weaponConfig.weaponName}");
+
+            // 1. 暂存玩家手里这把枪的真实数据包
+            WeaponData playerOldConfig = this.currentWeaponData;
+            int playerOldAmmo = this.currentAmmo;
+            int playerOldReserve = this.reserveAmmo;
+
+            // 2. 将地面枪的数据“吸入”玩家的主角容器里
+            this.currentWeaponData = groundGun.weaponConfig;
+            this.currentAmmo = groundGun.runtimeAmmo;
+
+            // 绝妙细节：如果玩家是历史上第一次拿到这把新枪，强行赋予它满额的默认备弹；否则拿取地上的备弹
+            if (!unlockedWeapons.Contains(weaponName))
+            {
+                unlockedWeapons.Add(weaponName);
+                this.reserveAmmo = groundGun.weaponConfig.defaultReserveAmmo;
+            }
+            else
+            {
+                this.reserveAmmo = groundGun.runtimeReserve;
+            }
+
+            // 3. 将玩家原本旧枪的数据“灌回”地上的方块里，保留给未来！
+            groundGun.Initialize(playerOldConfig, playerOldAmmo, playerOldReserve);
+
+            // 4. 让地上的方块在玩家脚下弹开一点点（防止连续触发换枪），并重置颜色
+            other.transform.position = transform.position + transform.forward * 1.5f + Vector3.up * 0.5f;
+            groundGun.SendMessage("Start"); // 强行让地上的方块重新根据新枪配置刷一次颜色！
+
+            // 5. 广播界面刷新
+            OnAmmoChanged?.Invoke();
         }
     }
 
-    // 契约重置：复活时，把备弹重新洗回当前配置文件的专属初始数量
     public void ResetData()
     {
         OnReloadComplete?.Invoke();
@@ -171,7 +222,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
         if (currentWeaponData != null)
         {
             currentAmmo = maxMagazineSize;
-            reserveAmmo = currentWeaponData.defaultReserveAmmo; // 复活时按当前配置重新补充
+            reserveAmmo = currentWeaponData.defaultReserveAmmo;
         }
 
         OnAmmoChanged?.Invoke();
