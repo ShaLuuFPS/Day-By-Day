@@ -21,25 +21,28 @@ public class PlayerShooting : MonoBehaviour, IResettable
     private float nextFireTime = 0f;
     private static HashSet<string> unlockedWeapons = new HashSet<string>();
 
-    // 🌟 交互核心防抖与雷达队列
-    private static float globalPickupTimer = 0f;
-    private const float PICKUP_COOLDOWN = 1.0f;
-    private List<IInteractable> nearbyInteractables = new List<IInteractable>(); // 附近所有的交互物
-
-    // 🌟 交互事件广播：告诉 UI 该显示什么字，或者隐藏 UI
-    public static event Action<string> OnShowInteractionUI;
-    public static event Action OnHideInteractionUI;
-
+    // 事件广播
     public static event Action OnAmmoChanged;
     public static event Action<float> OnReloading;
     public static event Action OnReloadComplete;
     public static event Action OnEmptyClipFired;
 
+    // 属性简写
     public string weaponName => currentWeaponData != null ? currentWeaponData.weaponName : "未知武器";
     public int maxMagazineSize => currentWeaponData != null ? currentWeaponData.maxMagazineSize : 7;
     public float reloadTime => currentWeaponData != null ? currentWeaponData.reloadTime : 1.5f;
 
     void Start()
+    {
+        InitializeWeapon();
+    }
+
+    void Update()
+    {
+        HandlePlayerInput();
+    }
+
+    private void InitializeWeapon()
     {
         if (currentWeaponData != null)
         {
@@ -53,24 +56,16 @@ public class PlayerShooting : MonoBehaviour, IResettable
         OnAmmoChanged?.Invoke();
     }
 
-    void Update()
-    {
-        // 1. 正常的射击与换弹逻辑
-        HandleShootingAndReloading();
-
-        // 2. 🌟 通用交互检测
-        HandleUniversalInteraction();
-    }
-
-    private void HandleShootingAndReloading()
+    private void HandlePlayerInput()
     {
         if (!hasWeapon || currentWeaponData == null || isReloading) return;
 
+        // 处理射击输入
         if (currentWeaponData.isAutomatic)
         {
             if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
             {
-                Shoot();
+                ExecuteShootLogic();
                 nextFireTime = Time.time + currentWeaponData.fireRate;
             }
         }
@@ -78,86 +73,78 @@ public class PlayerShooting : MonoBehaviour, IResettable
         {
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                Shoot();
+                ExecuteShootLogic();
             }
         }
 
+        // 处理换弹输入
         if (Keyboard.current.rKey.wasPressedThisFrame && currentAmmo < maxMagazineSize && reserveAmmo > 0)
         {
             StartCoroutine(ReloadRoutine());
         }
     }
 
-    // 🌟 核心函数：处理通用交互与多物体冲突
-    private void HandleUniversalInteraction()
+    private void ExecuteShootLogic()
     {
-        // 清理列表中可能已经被 Destroy 掉的无效残留（安全防护）
-        nearbyInteractables.RemoveAll(x => x == null || (x is MonoBehaviour mb && mb == null));
-
-        if (nearbyInteractables.Count == 0)
+        if (currentAmmo > 0)
         {
-            OnHideInteractionUI?.Invoke();
-            return;
-        }
+            currentAmmo--;
+            OnAmmoChanged?.Invoke();
 
-        // 💡 冲突破局：遍历列表，通过计算物理距离，死死咬住【离玩家最近的那一个】！
-        IInteractable closestInteractable = null;
-        float closestDistance = Mathf.Infinity;
-
-        foreach (var interactable in nearbyInteractables)
-        {
-            if (interactable is MonoBehaviour mb)
+            if (currentWeaponData.bulletPrefab != null && firePoint != null)
             {
-                float dist = Vector3.Distance(transform.position, mb.transform.position);
-                if (dist < closestDistance)
+                GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation);
+                Bullet bulletScript = bulletObj.GetComponent<Bullet>();
+                if (bulletScript != null)
                 {
-                    closestDistance = dist;
-                    closestInteractable = interactable;
+                    bulletScript.Initialize(currentWeaponData.damage);
                 }
             }
         }
-
-        if (closestInteractable == null) return;
-
-        // 通知 UI 实时刷新这个最近物体的提示文字（不管它是门还是枪！）
-        OnShowInteractionUI?.Invoke(closestInteractable.InteractionPrompt);
-
-        // 监听按 E 键
-        if (Keyboard.current.eKey.wasPressedThisFrame && Time.time >= globalPickupTimer)
+        else
         {
-            globalPickupTimer = Time.time + PICKUP_COOLDOWN;
-
-            // 执行交互前，先把它从队列里移除（因为它马上要被处理或传走）
-            IInteractable target = closestInteractable;
-            nearbyInteractables.Remove(target);
-
-            // 砰！触发这个物体特有的 Interact 逻辑
-            target.Interact(this);
+            OnEmptyClipFired?.Invoke();
         }
     }
 
-    // 🌟 只要挂了 IInteractable 接口的物体调大了触发箱，走进去就会被雷达捕获
-    private void OnTriggerEnter(Collider other)
+    private IEnumerator ReloadRoutine()
     {
-        IInteractable interactable = other.GetComponent<IInteractable>();
-        if (interactable != null && !nearbyInteractables.Contains(interactable))
+        isReloading = true;
+        float elapsed = 0f;
+
+        while (elapsed < reloadTime)
         {
-            nearbyInteractables.Add(interactable);
+            elapsed += Time.deltaTime;
+            OnReloading?.Invoke(elapsed);
+            yield return null;
         }
+
+        reserveAmmo += currentAmmo;
+        currentAmmo = 0;
+        int ammoNeeded = maxMagazineSize;
+
+        if (reserveAmmo >= ammoNeeded)
+        {
+            currentAmmo = ammoNeeded;
+            reserveAmmo -= ammoNeeded;
+        }
+        else
+        {
+            currentAmmo = reserveAmmo;
+            reserveAmmo = 0;
+        }
+
+        isReloading = false;
+        OnReloadComplete?.Invoke();
+        OnAmmoChanged?.Invoke();
     }
 
-    private void OnTriggerExit(Collider other)
-    {
-        IInteractable interactable = other.GetComponent<IInteractable>();
-        if (interactable != null && nearbyInteractables.Contains(interactable))
-        {
-            nearbyInteractables.Remove(interactable);
-        }
-    }
-
-    // 供外部枪械调用的核心数值交换
+    /// <summary>
+    /// 核心交互：由于雷达拆分，地面武器交互在此脚本被动执行
+    /// </summary>
     public void ExecuteInteraction(GunPickup groundGun, GameObject groundGameObject)
     {
+        // 1. 如果空手
         if (!hasWeapon)
         {
             currentWeaponData = groundGun.weaponConfig;
@@ -170,6 +157,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
             return;
         }
 
+        // 2. 拾取同款武器
         if (groundGun.weaponConfig.weaponName == this.weaponName)
         {
             currentAmmo = maxMagazineSize;
@@ -179,6 +167,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
             OnAmmoChanged?.Invoke();
             Destroy(groundGameObject);
         }
+        // 3. 换不同款的枪
         else
         {
             if (isReloading) return;
@@ -204,15 +193,33 @@ public class PlayerShooting : MonoBehaviour, IResettable
             groundGameObject.transform.position = transform.position + transform.forward * 1.8f + Vector3.up * 0.2f;
             groundGun.RefreshPickupState();
 
-            // 换枪后，把被吐出来的旧枪重新加回附近雷达列表，允许玩家等1秒后重新换回来
-            IInteractable newGroundInteractable = groundGameObject.GetComponent<IInteractable>();
-            if (newGroundInteractable != null) nearbyInteractables.Add(newGroundInteractable);
+            // 🌟 关键衔接：通过调用玩家身上的雷达组件，把吐出来的旧枪重新喂回交互列表
+            PlayerInteraction radar = GetComponent<PlayerInteraction>();
+            if (radar != null)
+            {
+                IInteractable newGroundInteractable = groundGameObject.GetComponent<IInteractable>();
+                radar.RegisterInteractable(newGroundInteractable);
+            }
 
             OnAmmoChanged?.Invoke();
         }
     }
 
-    void Shoot() { /* 保持原样... */ if (currentAmmo > 0) { currentAmmo--; OnAmmoChanged?.Invoke(); if (currentWeaponData.bulletPrefab != null && firePoint != null) { GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation); Bullet bulletScript = bulletObj.GetComponent<Bullet>(); if (bulletScript != null) bulletScript.Initialize(currentWeaponData.damage); } } else { OnEmptyClipFired?.Invoke(); } }
-    IEnumerator ReloadRoutine() { isReloading = true; float elapsed = 0f; while (elapsed < reloadTime) { elapsed += Time.deltaTime; OnReloading?.Invoke(elapsed); yield return null; } reserveAmmo += currentAmmo; currentAmmo = 0; int ammoNeeded = maxMagazineSize; if (reserveAmmo >= ammoNeeded) { currentAmmo = ammoNeeded; reserveAmmo -= ammoNeeded; } else { currentAmmo = reserveAmmo; reserveAmmo = 0; } isReloading = false; OnReloadComplete?.Invoke(); OnAmmoChanged?.Invoke(); }
-    public void ResetData() { OnReloadComplete?.Invoke(); StopAllCoroutines(); isReloading = false; nearbyInteractables.Clear(); if (currentWeaponData != null) { currentAmmo = maxMagazineSize; reserveAmmo = currentWeaponData.defaultReserveAmmo; } OnAmmoChanged?.Invoke(); }
+    public void ResetData()
+    {
+        OnReloadComplete?.Invoke();
+        StopAllCoroutines();
+        isReloading = false;
+
+        // 重置时一并让雷达脚本清空数据
+        PlayerInteraction radar = GetComponent<PlayerInteraction>();
+        if (radar != null) radar.ClearRadar();
+
+        if (currentWeaponData != null)
+        {
+            currentAmmo = maxMagazineSize;
+            reserveAmmo = currentWeaponData.defaultReserveAmmo;
+        }
+        OnAmmoChanged?.Invoke();
+    }
 }
