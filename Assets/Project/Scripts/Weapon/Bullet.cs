@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    public float speed = 20f; // 子弹飞行的速度
-    public float damage = 10f;
+    public float speed = 50f;
+    private float damage; 
 
     void Start()
     {
@@ -11,11 +11,19 @@ public class Bullet : MonoBehaviour
         Destroy(gameObject, 3f);
     }
 
+    // 🌟 核心：提供一个公开的初始化函数。枪在实例化子弹的瞬间，调用这个函数把伤害“灌”进来
+    public void Initialize(float weaponDamage)
+    {
+        this.damage = weaponDamage;
+    }
+
     void Update()
     {
         // 让子弹每帧沿着【它自己的正前方 (Vector3.forward)】高速移动
         transform.Translate(Vector3.forward * speed * Time.deltaTime, Space.Self);
     }
+
+
 
     private void OnTriggerEnter(Collider other)
     {

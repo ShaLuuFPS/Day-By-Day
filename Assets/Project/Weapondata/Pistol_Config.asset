@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 804e2c2333640a8458ef2874e054adc9, type: 3}
+  m_Name: Pistol_Config
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponData
+  weaponName: "\u624B\u67AA"
+  maxMagazineSize: 7
+  reloadTime: 0.5
+  fireRate: 0.2
+  isAutomatic: 0
+  damage: 20
+  defaultReserveAmmo: 49
+  bulletPrefab: {fileID: 400205377062518458, guid: 491a464fd864a2d4992bcaa81029b1db, type: 3}
