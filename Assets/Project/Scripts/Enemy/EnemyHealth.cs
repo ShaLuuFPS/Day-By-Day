@@ -11,11 +11,17 @@ public class EnemyHealth : MonoBehaviour
     private Color originalColor;        // 僵尸原本的颜色
     private Renderer enemyRenderer;     // 僵尸的渲染器
 
+    // 🌟 核心新增：掉落机制配置
+    [Header("💰 战利品掉落配置")]
+    [Tooltip("把我们在 Prefabs 文件夹里做好的补给箱拉到这里")]
+    public GameObject ammoBoxPrefab;
+    [Range(0f, 1f)]
+    [Tooltip("掉落概率：0.3 代表 30% 概率掉落")]
+    public float dropProbability = 0.3f;
+
     void Start()
     {
         currentHealth = maxHealth;
-
-        // 自动获取自身的渲染器和原本材质颜色，用来做受击变色反馈
         enemyRenderer = GetComponent<Renderer>();
         if (enemyRenderer != null)
         {
@@ -23,31 +29,22 @@ public class EnemyHealth : MonoBehaviour
         }
     }
 
-    // 【核心公开接口】：子弹打中时调用
     public void TakeDamage(float damageAmount)
     {
         currentHealth -= damageAmount;
         Debug.Log($"{gameObject.name} 受到 {damageAmount} 点伤害！剩余血量: {currentHealth}/{maxHealth}");
-
-        // 1. 展示受击动作：让怪物的身体闪烁一下红色
         ShowHurtEffect();
 
-        // 2. 检查死亡状态
         if (currentHealth <= 0)
         {
             Die();
         }
     }
 
-    // 执行受击视觉反馈
     void ShowHurtEffect()
     {
         if (enemyRenderer == null) return;
-
-        // 先把颜色变成受击红
         enemyRenderer.material.color = hurtColor;
-
-        // 并在 0.1 秒后自动恢复原样（Invoke 是 Unity 自带的延时呼叫工具）
         Invoke("ResetColor", 0.1f);
     }
 
@@ -64,7 +61,19 @@ public class EnemyHealth : MonoBehaviour
     {
         Debug.Log($"{gameObject.name} 已触发死亡状态！");
 
-        // 3. 动作展示死亡：现在先直接毁灭。后期我们可以在这里触发“倒地动画”或者“爆出一滩血水/零件”
+        // 🌟 核心新增：概率生成补给箱
+        if (ammoBoxPrefab != null)
+        {
+            // Unity 随机算命：Random.value 会生成 0.0 到 1.0 之间的浮点数
+            if (Random.value <= dropProbability)
+            {
+                // 在敌人死亡前的精确位置（transform.position）朝上抬起 0.1 米，生出一个补给箱！
+                Vector3 spawnPos = transform.position + Vector3.up * 0.1f;
+                Instantiate(ammoBoxPrefab, spawnPos, Quaternion.identity);
+                Debug.Log("🎉 运气大爆发！敌人掉落了一个备弹补给箱！");
+            }
+        }
+
         Destroy(gameObject);
     }
 }

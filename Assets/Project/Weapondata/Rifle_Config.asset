@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   weaponName: "\u7A81\u51FB\u6B65\u67AA"
   maxMagazineSize: 30
-  reloadTime: 2.5
-  fireRate: 0.15
+  reloadTime: 1.5
+  fireRate: 0.13
   isAutomatic: 1
   damage: 10
   defaultReserveAmmo: 270
