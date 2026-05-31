@@ -195,10 +195,15 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
         if (!unlockedWeapons.Contains(weaponName)) unlockedWeapons.Add(weaponName);
 
-        // 数据对调
+        //数据互换：旧枪留给地面的方块
         groundGun.Initialize(playerOldConfig, playerOldAmmo, playerOldReserve);
         groundGameObject.transform.position = transform.position + transform.forward * 1.8f + Vector3.up * 0.2f;
         groundGun.RefreshPickupState();
+
+        // 🌟 【新增细节】：如果是抛出来的旧枪，强行重置它的限时销毁组件，让它重新活 10 秒！
+        TimedDestroyer oldDestroyer = groundGameObject.GetComponent<TimedDestroyer>();
+        if (oldDestroyer != null) Destroy(oldDestroyer); // 拔掉快要过期的旧组件
+        groundGameObject.AddComponent<TimedDestroyer>(); // 啪！粘上一个全新的，重新开始算10秒倒计时！
 
         // 喂回雷达组件
         PlayerInteraction radar = GetComponent<PlayerInteraction>();

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1415044948003068170
+--- !u!1 &8041483531605557624
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,49 +8,49 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2264845065596468499}
-  - component: {fileID: 7816562418748711383}
-  - component: {fileID: 8315932364306456567}
-  - component: {fileID: 5368204870157025442}
-  - component: {fileID: 2153404969675033733}
-  - component: {fileID: -2360247111166824563}
+  - component: {fileID: 7114195817254507232}
+  - component: {fileID: 1228707321637025428}
+  - component: {fileID: 4075209673196423480}
+  - component: {fileID: 4942818415120144696}
+  - component: {fileID: 5103967858323668050}
+  - component: {fileID: 4455519662013592561}
   m_Layer: 0
-  m_Name: AmmoSupplyBox
+  m_Name: GunPickup
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2264845065596468499
+--- !u!4 &7114195817254507232
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.9, y: 0.30560607, z: 7.18}
-  m_LocalScale: {x: 0.4, y: 0.4, z: 0.4}
-  m_ConstrainProportionsScale: 1
+  m_LocalPosition: {x: -0.41, y: 0.30560607, z: 6.56}
+  m_LocalScale: {x: 0.6112103, y: 0.6112103, z: 0.6112103}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &7816562418748711383
+--- !u!33 &1228707321637025428
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &8315932364306456567
+--- !u!23 &4075209673196423480
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -69,7 +69,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9b01af17095ea764dbe9f31029b82f88, type: 2}
+  - {fileID: 2100000, guid: 41a0006de19a9da4bbcc823685593394, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -93,13 +93,13 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &5368204870157025442
+--- !u!65 &4942818415120144696
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -112,33 +112,35 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2, y: 2, z: 2}
+  m_Size: {x: 4, y: 2, z: 4}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &2153404969675033733
+--- !u!114 &5103967858323668050
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e82dc2e8ed2afcc42a5f2bb5dd547d9b, type: 3}
+  m_Script: {fileID: 11500000, guid: ffba504ce5a49194fb2ccb32e557ea35, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AmmoSupplyBox
-  supplyAmmoAmount: 30
---- !u!114 &-2360247111166824563
+  m_EditorClassIdentifier: Assembly-CSharp::GunPickup
+  weaponConfig: {fileID: 11400000, guid: 3f3516ff0c844b247ab829a2a8dd6e4a, type: 2}
+  runtimeAmmo: 0
+  runtimeReserve: 0
+--- !u!114 &4455519662013592561
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1415044948003068170}
+  m_GameObject: {fileID: 8041483531605557624}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af997418a679f8d4fbc0d2579ef1fce7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TimedDestroyer
-  totalLifeTime: 10
-  blinkDuration: 3
+  totalLifeTime: 30
+  blinkDuration: 5
   blinkInterval: 0.25
