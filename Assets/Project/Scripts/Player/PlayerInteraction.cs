@@ -105,9 +105,24 @@ public class PlayerInteraction : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         IInteractable interactable = other.GetComponent<IInteractable>();
-        if (interactable != null && !nearbyInteractables.Contains(interactable))
+        if (interactable != null)
         {
-            nearbyInteractables.Add(interactable);
+            // 🌟 核心改动：如果是地面的枪，并且和玩家手里的枪同名，直接自动触发交互！
+            if (interactable is GunPickup groundGun && playerShooting != null && playerShooting.hasWeapon)
+            {
+                if (groundGun.weaponConfig != null && groundGun.weaponConfig.weaponName == playerShooting.weaponName)
+                {
+                    // 啪嗒！不需要玩家按E，直接自动吸走
+                    interactable.Interact(playerShooting);
+                    return; // 已经销毁了，不需要再加入附近的按E雷达列表
+                }
+            }
+
+            // 如果不是同款枪（比如是不同的枪或未来的门），依然老老实实加入雷达队列，等玩家按 E
+            if (!nearbyInteractables.Contains(interactable))
+            {
+                nearbyInteractables.Add(interactable);
+            }
         }
     }
 
