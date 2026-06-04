@@ -1,27 +1,41 @@
 using UnityEngine;
 
-public class EnemySpawner : MonoBehaviour,IResettable
+/// <summary>
+/// 僵尸生成条目：配置 + 权重 + 可选专属预制体
+/// </summary>
+[System.Serializable]
+public class ZombieSpawnEntry
 {
-    [Header("生成配置")]
-    public GameObject zombiePrefab;      // 你的僵尸预制体（ZombieTarget）
-    public Transform playerTransform;    // 玩家的 Transform
+    [Tooltip("僵尸配置资产")]
+    public ZombieData zombieData;
+    [Tooltip("生成权重（数值越大出现概率越高）")]
+    public float weight = 1f;
+    [Tooltip("可选：该类型专属预制体（为空则使用 Spawner 的默认预制体）")]
+    public GameObject overridePrefab;
+}
+
+public class EnemySpawner : MonoBehaviour, IResettable
+{
+    [Header("僵尸预制体（通用）")]
+    public GameObject zombiePrefab;
+    public Transform playerTransform;
 
     [Header("生成控制")]
-    public float spawnInterval = 3.0f;   // 每隔几秒生成一只
-    public int maxZombies = 15;          // 场上最多同时存在多少只僵尸
+    public float spawnInterval = 3.0f;
+    public int maxZombies = 15;
 
-    [Header("范围控制（阶段二核心）")]
-    public float minRadius = 15f;        // 最小距离（内圈，前期测试可以调小，比如 2）
-    public float maxRadius = 30f;        // 最大距离（外圈）
-    public float spawnYHeight = 3f;    // 生成时的 Y 轴高度（确保僵尸脚踩在地面上）
+    [Header("范围控制")]
+    public float minRadius = 15f;
+    public float maxRadius = 30f;
+    public float spawnYHeight = 3f;
+
+    [Header("多僵尸类型（至少添加一个条目）")]
+    public ZombieSpawnEntry[] spawnEntries;
 
     private float timer = 0f;
 
-    
-
     void Start()
     {
-        // 如果没有手动手动拖入玩家，尝试自动抓取
         if (playerTransform == null)
         {
             GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -33,17 +47,15 @@ public class EnemySpawner : MonoBehaviour,IResettable
     {
         if (playerTransform == null || zombiePrefab == null) return;
 
-        // 统计当前场景里还活着多少只僵尸
         int currentZombieCount = Object.FindObjectsByType<ZombieAI>().Length;
 
-        // 如果没达到上限，开始倒计时刷怪
         if (currentZombieCount < maxZombies)
         {
             timer += Time.deltaTime;
             if (timer >= spawnInterval)
             {
                 SpawnZombie();
-                timer = 0f; // 重置计时器
+                timer = 0f;
             }
         }
     }
@@ -51,43 +63,85 @@ public class EnemySpawner : MonoBehaviour,IResettable
     public void ResetData()
     {
         timer = 0f;
-        Debug.Log("【数据重置】刷怪笼计时器已自我复位！");
     }
-
 
     void SpawnZombie()
     {
-        // 1. 在圆形范围内随机生成一个 2D 方向向量
-        Vector2 randomCirclePoint = Random.insideUnitCircle.normalized;
-
-        // 2. 在【内圈】和【外圈】之间随机切一刀，得出最终的随机距离
-        float randomDistance = Random.Range(minRadius, maxRadius);
-
-        // 3. 将 2D 圆形坐标转化为 3D 世界坐标
+        Vector2 randomCirclePoint = UnityEngine.Random.insideUnitCircle.normalized;
+        float randomDistance = UnityEngine.Random.Range(minRadius, maxRadius);
         Vector3 spawnOffset = new Vector3(randomCirclePoint.x, 0f, randomCirclePoint.y) * randomDistance;
         Vector3 spawnPosition = playerTransform.position + spawnOffset;
-
-        // 强制修正高度，防止僵尸出生在地下或者天上
         spawnPosition.y = spawnYHeight;
 
-        // ✨ 新代码：生成、改名、并强制抓进 Manager 的肚子里
-        GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, Quaternion.identity);
-        newZombie.name = "Spawned_Zombie";
+        // 按权重随机抽取一条生成条目
+        ZombieSpawnEntry selectedEntry = PickEntryByWeight();
+        ZombieData selectedData = selectedEntry?.zombieData;
 
-        // 绝对防御行：强制让新出生的僵尸认当前挂着 Spawner 的物体当亲爹！
+        if (selectedEntry == null)
+            Debug.LogWarning("[Spawner] spawnEntries 为空，所有僵尸将使用默认配置！请在 Inspector 添加至少一条生成条目。");
+
+        // 优先使用条目专属预制体，回退到 Spawner 默认预制体
+        GameObject prefabToUse = (selectedEntry != null && selectedEntry.overridePrefab != null)
+            ? selectedEntry.overridePrefab
+            : zombiePrefab;
+
+        if (prefabToUse == null) return;
+
+        GameObject newZombie = Instantiate(prefabToUse, spawnPosition, Quaternion.identity);
+        newZombie.name = selectedData != null ? selectedData.zombieName : "Spawned_Zombie";
         newZombie.transform.SetParent(this.transform);
+
+        // 注入 ZombieData 配置
+        if (selectedData != null)
+        {
+            Debug.Log($"[Spawner] 生成 {selectedData.zombieName}（权重={selectedEntry.weight}）");
+
+            ZombieAI ai = newZombie.GetComponent<ZombieAI>();
+            if (ai != null)
+            {
+                ai.zombieData = selectedData;
+                ai.ApplyConfig();
+            }
+
+            EnemyHealth health = newZombie.GetComponent<EnemyHealth>();
+            if (health != null)
+            {
+                health.zombieData = selectedData;
+                health.ApplyConfig();
+            }
+        }
     }
 
-    // ⭐ 调试小福利：在场景视图里用线条画出内圈和外圈，方便肉眼看刷怪范围
+    /// <summary>
+    /// 按权重随机抽取一个生成条目
+    /// </summary>
+    ZombieSpawnEntry PickEntryByWeight()
+    {
+        if (spawnEntries == null || spawnEntries.Length == 0) return null;
+
+        float totalWeight = 0f;
+        foreach (var entry in spawnEntries)
+            totalWeight += entry.weight;
+
+        if (totalWeight <= 0f) return spawnEntries[0];
+
+        float roll = UnityEngine.Random.Range(0f, totalWeight);
+        float cumulative = 0f;
+        foreach (var entry in spawnEntries)
+        {
+            cumulative += entry.weight;
+            if (roll <= cumulative)
+                return entry;
+        }
+
+        return spawnEntries[0];
+    }
+
     void OnDrawGizmosSelected()
     {
         if (playerTransform == null) return;
-
-        // 蓝圈：内圈（禁刷区）
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(playerTransform.position, minRadius);
-
-        // 红圈：外圈（最大生成区）
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(playerTransform.position, maxRadius);
     }

@@ -1,79 +1,173 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
 public class EnemyHealth : MonoBehaviour
 {
-    [Header("生命值设置")]
-    public float maxHealth = 30f;   // 最大血量
-    private float currentHealth;    // 当前血量
+    [Header("僵尸配置")]
+    public ZombieData zombieData;
 
-    [Header("受击视觉反馈")]
-    public Color hurtColor = Color.red; // 受击时闪烁的颜色（默认红色）
-    private Color originalColor;        // 僵尸原本的颜色
-    private Renderer enemyRenderer;     // 僵尸的渲染器
+    private float _maxHealth         = 30f;
+    private Color _hurtColor         = Color.red;
+    private float _hurtFlashDuration = 0.1f;
+    private Color _currentBaseColor  = Color.white;
 
-    // 🌟 核心新增：掉落机制配置
-    [Header("💰 战利品掉落配置")]
-    [Tooltip("把我们在 Prefabs 文件夹里做好的补给箱拉到这里")]
-    public GameObject ammoBoxPrefab;
-    [Range(0f, 1f)]
-    [Tooltip("掉落概率：0.3 代表 30% 概率掉落")]
-    public float dropProbability = 0.3f;
+    private float currentHealth;
+    private Renderer enemyRenderer;
+    private bool _isDead = false;
 
     void Start()
     {
-        currentHealth = maxHealth;
         enemyRenderer = GetComponent<Renderer>();
-        if (enemyRenderer != null)
-        {
-            originalColor = enemyRenderer.material.color;
-        }
+        ApplyConfig();
+    }
+
+    public void ApplyConfig()
+    {
+        if (zombieData == null) return;
+
+        _maxHealth         = zombieData.maxHealth;
+        _hurtColor         = zombieData.hurtColor;
+        _hurtFlashDuration = zombieData.hurtFlashDuration;
+        _currentBaseColor  = zombieData.baseColor;
+
+        if (currentHealth <= 0f || currentHealth > _maxHealth)
+            currentHealth = _maxHealth;
     }
 
     public void TakeDamage(float damageAmount)
     {
+        if (_isDead) return;
+
         currentHealth -= damageAmount;
-        Debug.Log($"{gameObject.name} 受到 {damageAmount} 点伤害！剩余血量: {currentHealth}/{maxHealth}");
         ShowHurtEffect();
 
         if (currentHealth <= 0)
-        {
             Die();
-        }
+    }
+
+    /// <summary>
+    /// 供 ZombieAI 自爆模式调用
+    /// </summary>
+    public void TriggerDeath()
+    {
+        if (!_isDead) Die();
     }
 
     void ShowHurtEffect()
     {
         if (enemyRenderer == null) return;
-        enemyRenderer.material.color = hurtColor;
-        Invoke("ResetColor", 0.1f);
+        enemyRenderer.material.color = _hurtColor;
+        StartCoroutine(ResetColorAfterDelay(_hurtFlashDuration));
     }
 
-    void ResetColor()
+    IEnumerator ResetColorAfterDelay(float delay)
     {
+        yield return new WaitForSeconds(delay);
         if (enemyRenderer != null)
-        {
-            enemyRenderer.material.color = originalColor;
-        }
+            enemyRenderer.material.color = _currentBaseColor;
     }
 
-    // 执行死亡动作
     void Die()
     {
-        Debug.Log($"{gameObject.name} 已触发死亡状态！");
+        if (_isDead) return;
+        _isDead = true;
 
-        // 🌟 核心新增：概率生成补给箱
-        if (ammoBoxPrefab != null)
+        if (zombieData != null && zombieData.explodeOnDeath)
+            Explode();
+
+        TryDropLoot();
+        Destroy(gameObject);
+    }
+
+    void Explode()
+    {
+        float radius = zombieData.explosionRadius;
+        float damage = zombieData.explosionDamage;
+
+        // 自杀式爆炸：半径小于攻击距离会导致炸不到人
+        if (zombieData.suicideBomber && radius < zombieData.attackRange)
+            Debug.LogWarning($"[{zombieData.zombieName}] 爆炸半径({radius}) < 攻击距离({zombieData.attackRange})，自杀爆炸可能炸不到玩家！");
+
+        // --- 视觉特效（半圆球体，赤道贴地）---
+        // 射线找真实地面高度，球心贴地 → 上半球可见、下半球在地面以下
+        Vector3 vfxPos = transform.position;
+        float groundY = vfxPos.y;
+        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit groundHit, 10f))
+            groundY = groundHit.point.y;
+        vfxPos.y = groundY;
+
+        if (zombieData.explosionEffectPrefab != null)
         {
-            // Unity 随机算命：Random.value 会生成 0.0 到 1.0 之间的浮点数
-            if (Random.value <= dropProbability)
-            {
-                // 在敌人死亡前的精确位置（transform.position）朝上抬起 0.1 米，生出一个补给箱！
-                Vector3 spawnPos = transform.position + Vector3.up * 0.1f;
-                Instantiate(ammoBoxPrefab, spawnPos, Quaternion.identity);
-                Debug.Log("🎉 运气大爆发！敌人掉落了一个备弹补给箱！");
-            }
+            GameObject vfx = Instantiate(zombieData.explosionEffectPrefab, vfxPos, Quaternion.identity);
+            // 自动对齐：特效可视半径 == 伤害半径（考虑预制体自身 scale）
+            float meshRadius   = GetMeshHorizontalRadius(vfx);
+            Vector3 prefabScale = zombieData.explosionEffectPrefab.transform.localScale;
+            float effectiveR   = meshRadius * Mathf.Max(prefabScale.x, prefabScale.z);
+            float autoScale    = effectiveR > 0.001f ? radius / effectiveR : radius;
+            vfx.transform.localScale = prefabScale * autoScale;
+            Destroy(vfx, 0.5f);
+        }
+        else
+        {
+            // 代码兜底：Unity 默认球体半径=0.5，scale * 2 = 直径翻倍至 2*radius
+            GameObject vfx = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            vfx.transform.position = vfxPos;
+            vfx.transform.localScale = Vector3.one * radius * 2f;
+            Destroy(vfx.GetComponent<Collider>());
+            Destroy(vfx, 0.5f);
         }
 
-        Destroy(gameObject);
+        // --- 范围伤害（去重，防止多碰撞体重复扣血）---
+        Collider[] hits = Physics.OverlapSphere(transform.position, radius);
+        Debug.Log($"[Explode] 中心={transform.position} 半径={radius} 伤害={damage} 命中数={hits.Length}");
+
+        HashSet<PlayerHealth> damagedPlayers = new HashSet<PlayerHealth>();
+
+        foreach (Collider hit in hits)
+        {
+            // 玩家可能在碰撞体的父对象上（如 CharacterController 子物体）
+            PlayerHealth ph = hit.GetComponent<PlayerHealth>();
+            if (ph == null) ph = hit.GetComponentInParent<PlayerHealth>();
+            if (ph != null && damagedPlayers.Add(ph))
+            {
+                Debug.Log($"[Explode] 对玩家造成 {damage} 点伤害");
+                ph.TakeDamage(damage);
+                continue;
+            }
+
+            EnemyHealth eh = hit.GetComponent<EnemyHealth>();
+            // 不对自己造成伤害（自身已在 Die() 中标记 _isDead，TakeDamage 也会拦截）
+            if (eh != null && eh != this)
+                eh.TakeDamage(damage);
+        }
+    }
+
+    void TryDropLoot()
+    {
+        if (zombieData == null || zombieData.dropPrefab == null) return;
+
+        if (UnityEngine.Random.value <= zombieData.dropProbability)
+        {
+            Vector3 spawnPos = transform.position + Vector3.up * 0.1f;
+            GameObject drop = Instantiate(zombieData.dropPrefab, spawnPos, Quaternion.identity);
+            // 标记以便重启游戏时清理
+            if (!drop.GetComponent<LootDrop>())
+                drop.AddComponent<LootDrop>();
+        }
+    }
+
+    /// <summary>
+    /// 获取预制体 mesh 在水平方向的最大半径（XZ 平面），用于对齐特效与伤害范围
+    /// </summary>
+    float GetMeshHorizontalRadius(GameObject obj)
+    {
+        MeshFilter mf = obj.GetComponent<MeshFilter>();
+        if (mf != null && mf.sharedMesh != null)
+        {
+            Bounds b = mf.sharedMesh.bounds;
+            return Mathf.Max(b.extents.x, b.extents.z);
+        }
+        return 0.5f; // 兜底：默认球体半径
     }
 }

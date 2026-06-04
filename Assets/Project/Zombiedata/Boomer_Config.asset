@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a29d121cb6f4acc4893d305bd9cb7615, type: 3}
+  m_Name: Boomer_Config
+  m_EditorClassIdentifier: Assembly-CSharp::ZombieData
+  zombieName: "\u7206\u70B8\u50F5\u5C38"
+  moveSpeed: 8
+  stoppingDistance: 1
+  attackRange: 2.5
+  attackDamage: 10
+  attackRate: 1
+  maxHealth: 15
+  baseColor: {r: 0.7764706, g: 0.76293945, b: 0.15294117, a: 1}
+  hurtColor: {r: 1, g: 0, b: 0, a: 1}
+  hurtFlashDuration: 0.1
+  useFlickerEffect: 1
+  flickerColor: {r: 1, g: 1, b: 1, a: 1}
+  flickerInterval: 0.15
+  warningRadius: 10
+  suicideBomber: 1
+  explodeOnDeath: 1
+  explosionRadius: 1
+  explosionDamage: 50
+  explosionEffectPrefab: {fileID: 726784960765694414, guid: 5383f577c49331a498cf0d847f215d39, type: 3}
+  dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
+  dropProbability: 0

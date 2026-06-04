@@ -88,7 +88,7 @@ public class PlayerHealth : MonoBehaviour, IResettable
     {
         Debug.Log("【开始一键清理重置现场...】");
 
-        // 1. 物理清场：毁灭 SpawnerManager 下的所有僵尸
+        // 1. 物理清场：毁灭 SpawnerManager 下的所有僵尸 + 清理掉落物
         if (spawnerManager != null)
         {
             foreach (Transform child in spawnerManager.transform)
@@ -96,6 +96,11 @@ public class PlayerHealth : MonoBehaviour, IResettable
                 Destroy(child.gameObject);
             }
         }
+
+        // 清理所有掉落物（标记了 LootDrop 组件）
+        LootDrop[] drops = FindObjectsByType<LootDrop>(FindObjectsInactive.Include);
+        foreach (LootDrop drop in drops)
+            Destroy(drop.gameObject);
 
         // 2. 玩家物理复位：把玩家坐标拉回初始点
         transform.position = playerInitialPosition;
