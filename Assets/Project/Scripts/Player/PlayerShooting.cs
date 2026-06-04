@@ -19,6 +19,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
     public Transform firePoint;
 
     private float nextFireTime = 0f;
+    private bool interruptReload = false;
     private static HashSet<string> unlockedWeapons = new HashSet<string>();
 
     // 事件广播
@@ -30,7 +31,9 @@ public class PlayerShooting : MonoBehaviour, IResettable
     // 属性简写
     public string weaponName => currentWeaponData != null ? currentWeaponData.weaponName : "未知武器";
     public int maxMagazineSize => currentWeaponData != null ? currentWeaponData.maxMagazineSize : 7;
-    public float reloadTime => currentWeaponData != null ? currentWeaponData.reloadTime : 1.5f;
+    public float reloadTime => currentWeaponData != null
+        ? (currentWeaponData.isMagazineReload ? currentWeaponData.reloadTime : currentWeaponData.perShellReloadTime)
+        : 1.5f;
 
     void Start()
     {
@@ -58,7 +61,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     private void HandlePlayerInput()
     {
-        if (!hasWeapon || currentWeaponData == null || isReloading) return;
+        if (!hasWeapon || currentWeaponData == null) return;
+
+        // 逐发装填中：允许射击键打断（装完当前发就停），其余输入屏蔽
+        if (isReloading)
+        {
+            if (!currentWeaponData.isMagazineReload && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                interruptReload = true;
+            }
+            return;
+        }
 
         // 处理射击输入
         if (currentWeaponData.isAutomatic)
@@ -93,11 +106,27 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
             if (currentWeaponData.bulletPrefab != null && firePoint != null)
             {
-                GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, firePoint.rotation);
-                Bullet bulletScript = bulletObj.GetComponent<Bullet>();
-                if (bulletScript != null)
+                int pellets = currentWeaponData.bulletsPerShot;
+                float spread = currentWeaponData.spreadAngle;
+
+                for (int i = 0; i < pellets; i++)
                 {
-                    bulletScript.Initialize(currentWeaponData.damage);
+                    Quaternion pelletRotation = firePoint.rotation;
+
+                    // 霰弹枪模式：为每一发弹丸叠加随机散布
+                    if (spread > 0f)
+                    {
+                        float randomYaw   = UnityEngine.Random.Range(-spread, spread);
+                        float randomPitch = UnityEngine.Random.Range(-spread, spread);
+                        pelletRotation = firePoint.rotation * Quaternion.Euler(randomPitch, randomYaw, 0f);
+                    }
+
+                    GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, pelletRotation);
+                    Bullet bulletScript = bulletObj.GetComponent<Bullet>();
+                    if (bulletScript != null)
+                    {
+                        bulletScript.Initialize(currentWeaponData.damage);
+                    }
                 }
             }
         }
@@ -110,28 +139,54 @@ public class PlayerShooting : MonoBehaviour, IResettable
     private IEnumerator ReloadRoutine()
     {
         isReloading = true;
-        float elapsed = 0f;
+        interruptReload = false;
 
-        while (elapsed < reloadTime)
+        if (currentWeaponData.isMagazineReload)
         {
-            elapsed += Time.deltaTime;
-            OnReloading?.Invoke(elapsed);
-            yield return null;
-        }
+            // ========== 弹夹式换弹（原逻辑）==========
+            float elapsed = 0f;
+            while (elapsed < reloadTime)
+            {
+                elapsed += Time.deltaTime;
+                OnReloading?.Invoke(elapsed);
+                yield return null;
+            }
 
-        reserveAmmo += currentAmmo;
-        currentAmmo = 0;
-        int ammoNeeded = maxMagazineSize;
+            reserveAmmo += currentAmmo;
+            currentAmmo = 0;
+            int ammoNeeded = maxMagazineSize;
 
-        if (reserveAmmo >= ammoNeeded)
-        {
-            currentAmmo = ammoNeeded;
-            reserveAmmo -= ammoNeeded;
+            if (reserveAmmo >= ammoNeeded)
+            {
+                currentAmmo = ammoNeeded;
+                reserveAmmo -= ammoNeeded;
+            }
+            else
+            {
+                currentAmmo = reserveAmmo;
+                reserveAmmo = 0;
+            }
         }
         else
         {
-            currentAmmo = reserveAmmo;
-            reserveAmmo = 0;
+            // ========== 逐发装填（霰弹枪）==========
+            while (currentAmmo < maxMagazineSize && reserveAmmo > 0 && !interruptReload)
+            {
+                float shellElapsed = 0f;
+                float shellTime = currentWeaponData.perShellReloadTime;
+
+                while (shellElapsed < shellTime && !interruptReload)
+                {
+                    shellElapsed += Time.deltaTime;
+                    OnReloading?.Invoke(shellElapsed);
+                    yield return null;
+                }
+
+                // 无论被打断还是正常完成，当前这一发都装进去
+                currentAmmo++;
+                reserveAmmo--;
+                OnAmmoChanged?.Invoke();
+            }
         }
 
         isReloading = false;
@@ -229,7 +284,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
         if (radar != null) radar.ClearRadar();
 
         // 2. 核心修复：将场景中所有现存的地面枪械（GunPickup）全部初始化回默认满状态
-        GunPickup[] allSceneGuns = FindObjectsByType<GunPickup>(FindObjectsSortMode.None);
+        GunPickup[] allSceneGuns = FindObjectsByType<GunPickup>();
         foreach (GunPickup gun in allSceneGuns)
         {
             if (gun != null && gun.weaponConfig != null)

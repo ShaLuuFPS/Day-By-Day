@@ -27,7 +27,12 @@ public class GunPickup : MonoBehaviour, IInteractable
         Renderer renderer = GetComponent<Renderer>();
         if (renderer != null && weaponConfig != null)
         {
-            renderer.material.color = weaponConfig.weaponName == "手枪" ? Color.green : Color.red;
+            renderer.material.color = weaponConfig.weaponName switch
+            {
+                "手枪" => Color.green,
+                "霰弹枪" => Color.yellow,
+                _ => Color.red
+            };
         }
     }
 
