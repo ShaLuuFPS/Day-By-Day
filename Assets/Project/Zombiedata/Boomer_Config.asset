@@ -28,8 +28,8 @@ MonoBehaviour:
   warningRadius: 10
   suicideBomber: 1
   explodeOnDeath: 1
-  explosionRadius: 1
-  explosionDamage: 50
+  explosionRadius: 5
+  explosionDamage: 30
   explosionEffectPrefab: {fileID: 726784960765694414, guid: 5383f577c49331a498cf0d847f215d39, type: 3}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 0

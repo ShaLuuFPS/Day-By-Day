@@ -1,0 +1,21 @@
+{
+  "dangerouslySkipPermissions": true,
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Agent(*)",
+      "NotebookEdit(*)",
+      "Skill(*)",
+      "Task(*)",
+      "Workflow(*)"
+    ],
+    "defaultMode": "bypassPermissions"
+  }
+}
