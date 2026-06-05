@@ -110,11 +110,12 @@ public class PlayerInteraction : MonoBehaviour
             // 🌟 核心改动：如果是地面的枪，并且和玩家手里的枪同名，直接自动触发交互！
             if (interactable is GunPickup groundGun && playerShooting != null && playerShooting.hasWeapon)
             {
-                if (groundGun.weaponConfig != null && groundGun.weaponConfig.weaponName == playerShooting.weaponName)
+                if (groundGun.weaponConfig != null
+                    && playerShooting.FindSlotByWeaponName(groundGun.weaponConfig.weaponName) >= 0)
                 {
-                    // 啪嗒！不需要玩家按E，直接自动吸走
+                    // 同款武器自动吸走补弹（遍历双槽查找匹配）
                     interactable.Interact(playerShooting);
-                    return; // 已经销毁了，不需要再加入附近的按E雷达列表
+                    return;
                 }
             }
 

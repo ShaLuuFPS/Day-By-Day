@@ -6,13 +6,11 @@ using System.Collections.Generic;
 
 public class PlayerShooting : MonoBehaviour, IResettable
 {
-    [Header("核心武器配置")]
-    public WeaponData currentWeaponData;
+    [Header("双武器槽位")]
+    public WeaponSlot[] slots = new WeaponSlot[2];
+    public int activeSlotIndex = 0;
 
-    [Header("枪械实时状态")]
-    public bool hasWeapon = false;
-    public int currentAmmo;
-    public int reserveAmmo;
+    [Header("换弹状态（只有 activeSlot 能换弹）")]
     public bool isReloading { get; private set; } = false;
 
     [Header("射击物理枪口")]
@@ -28,12 +26,77 @@ public class PlayerShooting : MonoBehaviour, IResettable
     public static event Action OnReloadComplete;
     public static event Action OnEmptyClipFired;
 
-    // 属性简写
+    // ─── 属性简写：全部委托到 activeSlot ───
+    private WeaponSlot activeSlot => (slots != null && slots.Length > activeSlotIndex) ? slots[activeSlotIndex] : null;
+    public WeaponData currentWeaponData => activeSlot?.weaponData;
+    public bool hasWeapon
+    {
+        get
+        {
+            if (slots == null) return false;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i] != null && !slots[i].IsEmpty) return true;
+            }
+            return false;
+        }
+    }
+    public int currentAmmo
+    {
+        get => activeSlot != null ? activeSlot.currentAmmo : 0;
+        set { if (activeSlot != null) activeSlot.currentAmmo = value; }
+    }
+    public int reserveAmmo
+    {
+        get => activeSlot != null ? activeSlot.reserveAmmo : 0;
+        set { if (activeSlot != null) activeSlot.reserveAmmo = value; }
+    }
     public string weaponName => currentWeaponData != null ? currentWeaponData.weaponName : "未知武器";
     public int maxMagazineSize => currentWeaponData != null ? currentWeaponData.maxMagazineSize : 7;
     public float reloadTime => currentWeaponData != null
         ? (currentWeaponData.isMagazineReload ? currentWeaponData.reloadTime : currentWeaponData.perShellReloadTime)
         : 1.5f;
+
+    /// <summary>
+    /// 查找武器名称匹配的槽位索引，没找到返回 -1
+    /// </summary>
+    public int FindSlotByWeaponName(string name)
+    {
+        if (slots == null || string.IsNullOrEmpty(name)) return -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] != null && slots[i].weaponData != null && slots[i].weaponData.weaponName == name)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// 找到第一个空槽的索引，没有空槽返回 -1
+    /// </summary>
+    public int FindEmptySlot()
+    {
+        if (slots == null) return -1;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == null || slots[i].IsEmpty) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// 公开方法：外部可直接触发弹药 UI 刷新（替代 AmmoSupplyBox 的反射 hack）
+    /// </summary>
+    public static void InvokeAmmoChanged() => OnAmmoChanged?.Invoke();
+
+    void Awake()
+    {
+        // 确保两个槽位都被初始化（数组声明只分配了 null 引用）
+        for (int i = 0; i < slots.Length; i++)
+        {
+            if (slots[i] == null) slots[i] = new WeaponSlot();
+        }
+    }
 
     void Start()
     {
@@ -47,20 +110,53 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     private void InitializeWeapon()
     {
-        if (currentWeaponData != null)
+        // slots[0] 可能已经有武器（Inspector 中预设），按 WeaponData 初始化
+        if (slots[0] != null && slots[0].weaponData != null)
         {
-            currentAmmo = maxMagazineSize;
-            if (!unlockedWeapons.Contains(weaponName))
-            {
-                unlockedWeapons.Add(weaponName);
-                reserveAmmo = currentWeaponData.defaultReserveAmmo;
-            }
+            slots[0].LoadFromConfig(slots[0].weaponData,
+                !unlockedWeapons.Contains(slots[0].weaponData.weaponName));
+            if (!unlockedWeapons.Contains(slots[0].weaponData.weaponName))
+                unlockedWeapons.Add(slots[0].weaponData.weaponName);
         }
+        OnAmmoChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 切换到指定槽位的武器。空槽不能切、已在当前槽不操作。
+    /// 切枪会打断正在进行的换弹。
+    /// </summary>
+    private void SwapToSlot(int index)
+    {
+        if (index == activeSlotIndex) return;
+        if (slots == null || index < 0 || index >= slots.Length) return;
+        if (slots[index] == null || slots[index].IsEmpty) return;
+
+        // 打断换弹
+        if (isReloading)
+        {
+            StopAllCoroutines();
+            isReloading = false;
+            OnReloadComplete?.Invoke();
+        }
+
+        activeSlotIndex = index;
         OnAmmoChanged?.Invoke();
     }
 
     private void HandlePlayerInput()
     {
+        // ── 切枪输入（同一帧内阻止射击/换弹）──
+        if (Keyboard.current.digit1Key.wasPressedThisFrame)
+        {
+            SwapToSlot(0);
+            return;
+        }
+        if (Keyboard.current.digit2Key.wasPressedThisFrame)
+        {
+            SwapToSlot(1);
+            return;
+        }
+
         if (!hasWeapon || currentWeaponData == null) return;
 
         // 逐发装填中：允许射击键打断（装完当前发就停），其余输入屏蔽
@@ -91,7 +187,9 @@ public class PlayerShooting : MonoBehaviour, IResettable
         }
 
         // 处理换弹输入
-        if (Keyboard.current.rKey.wasPressedThisFrame && currentAmmo < maxMagazineSize && reserveAmmo > 0)
+        if (Keyboard.current.rKey.wasPressedThisFrame
+            && activeSlot.currentAmmo < maxMagazineSize
+            && activeSlot.reserveAmmo > 0)
         {
             StartCoroutine(ReloadRoutine());
         }
@@ -196,71 +294,95 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     /// <summary>
     /// 核心交互：接收地面武器的交互指令（支持靠近自动触发 + 打断换弹）
+    /// 4 分支：双手空 / 同款补满 / 有空槽 / 双手满替换
     /// </summary>
     public void ExecuteInteraction(GunPickup groundGun, GameObject groundGameObject)
     {
-        // 🧱 情况 1：如果玩家当前处于空手状态，直接拿起来
+        // ── 分支 1：双手都空 → 新枪放入槽 0，切到槽 0 ──
         if (!hasWeapon)
         {
-            currentWeaponData = groundGun.weaponConfig;
-            currentAmmo = groundGun.runtimeAmmo;
-            reserveAmmo = groundGun.runtimeReserve;
-            hasWeapon = true;
-
-            if (!unlockedWeapons.Contains(weaponName)) unlockedWeapons.Add(weaponName);
-
+            slots[0].LoadFromConfig(groundGun.weaponConfig, true);
+            if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
+                unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
+            // 如果有地面记录的弹药则使用地面数据
+            slots[0].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[0].MaxMagazine;
+            slots[0].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
+            activeSlotIndex = 0;
             OnAmmoChanged?.Invoke();
             Destroy(groundGameObject);
             return;
         }
 
-        // 🧱 情况 2：如果是【同款武器】（靠近自动触发流）
-        if (groundGun.weaponConfig.weaponName == this.weaponName)
+        // ── 分支 2：有同款武器 → 自动补满弹药，不占新槽 ──
+        int matchingSlot = FindSlotByWeaponName(groundGun.weaponConfig.weaponName);
+        if (matchingSlot >= 0)
         {
-            // 🌟 绝妙细节：如果玩家此时正在换弹，直接暴力打断换弹过程！
-            if (isReloading)
+            // 如果同款武器正在换弹且恰是 activeSlot → 打断
+            if (isReloading && matchingSlot == activeSlotIndex)
             {
-                StopAllCoroutines(); // 强行杀死正在数秒的换弹协程
-                isReloading = false; // 状态重置为正常射击状态
-                OnReloadComplete?.Invoke(); // 触发事件让 UI Manager 把换弹进度条隐藏掉
+                StopAllCoroutines();
+                isReloading = false;
+                OnReloadComplete?.Invoke();
             }
 
-            // 瞬间将当前弹夹与备弹全部补满到最大上限
-            currentAmmo = maxMagazineSize;
-            reserveAmmo = groundGun.weaponConfig.defaultReserveAmmo;
+            WeaponData cfg = groundGun.weaponConfig;
+            slots[matchingSlot].currentAmmo = cfg.maxMagazineSize;
+            slots[matchingSlot].reserveAmmo = cfg.defaultReserveAmmo;
 
-            // 刷新子弹 UI 并销毁地面物体
+            // 切到同款武器槽
+            if (activeSlotIndex != matchingSlot)
+            {
+                activeSlotIndex = matchingSlot;
+            }
+
             OnAmmoChanged?.Invoke();
             Destroy(groundGameObject);
             return;
         }
 
-        // 🧱 情况 3：如果是【不同款武器】，依然维持原样，走严格的按 E 灵魂互换流程
+        // ── 分支 3：有空槽 → 新枪放入空槽，切到该槽 ──
+        int emptySlot = FindEmptySlot();
+        if (emptySlot >= 0)
+        {
+            slots[emptySlot].LoadFromConfig(groundGun.weaponConfig, true);
+            if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
+                unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
+            slots[emptySlot].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[emptySlot].MaxMagazine;
+            slots[emptySlot].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
+            activeSlotIndex = emptySlot;
+            OnAmmoChanged?.Invoke();
+            Destroy(groundGameObject);
+            return;
+        }
+
+        // ── 分支 4：双手都满 → 替换当前 activeSlot，旧枪丢地上 ──
         if (isReloading) return;
 
-        // 备份旧枪
-        WeaponData playerOldConfig = this.currentWeaponData;
-        int playerOldAmmo = this.currentAmmo;
-        int playerOldReserve = this.reserveAmmo;
+        // 备份旧枪数据
+        WeaponData playerOldConfig = slots[activeSlotIndex].weaponData;
+        int playerOldAmmo = slots[activeSlotIndex].currentAmmo;
+        int playerOldReserve = slots[activeSlotIndex].reserveAmmo;
 
         // 灌入新枪
-        this.currentWeaponData = groundGun.weaponConfig;
-        this.currentAmmo = groundGun.runtimeAmmo;
-        this.reserveAmmo = groundGun.runtimeReserve;
+        slots[activeSlotIndex].LoadFromConfig(groundGun.weaponConfig, true);
+        if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
+            unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
+        slots[activeSlotIndex].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[activeSlotIndex].MaxMagazine;
+        slots[activeSlotIndex].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
 
-        if (!unlockedWeapons.Contains(weaponName)) unlockedWeapons.Add(weaponName);
-
-        //数据互换：旧枪留给地面的方块
+        // 旧枪数据写到地面物体
         groundGun.Initialize(playerOldConfig, playerOldAmmo, playerOldReserve);
         groundGameObject.transform.position = transform.position + transform.forward * 1.8f + Vector3.up * 0.2f;
         groundGun.RefreshPickupState();
 
-        // 🌟 【新增细节】：如果是抛出来的旧枪，强行重置它的限时销毁组件，让它重新活 10 秒！
-        TimedDestroyer oldDestroyer = groundGameObject.GetComponent<TimedDestroyer>();
-        if (oldDestroyer != null) Destroy(oldDestroyer); // 拔掉快要过期的旧组件
-        groundGameObject.AddComponent<TimedDestroyer>(); // 啪！粘上一个全新的，重新开始算10秒倒计时！
+        // 重置地面物体的限时销毁（复用已有组件，避免竞态）
+        TimedDestroyer destroyer = groundGameObject.GetComponent<TimedDestroyer>();
+        if (destroyer != null)
+            destroyer.ResetTimer();
+        else
+            groundGameObject.AddComponent<TimedDestroyer>();
 
-        // 喂回雷达组件
+        // 喂回雷达
         PlayerInteraction radar = GetComponent<PlayerInteraction>();
         if (radar != null)
         {
@@ -283,23 +405,25 @@ public class PlayerShooting : MonoBehaviour, IResettable
         PlayerInteraction radar = GetComponent<PlayerInteraction>();
         if (radar != null) radar.ClearRadar();
 
-        // 2. 核心修复：将场景中所有现存的地面枪械（GunPickup）全部初始化回默认满状态
+        // 2. 将场景中所有现存的地面枪械全部初始化回默认满状态
         GunPickup[] allSceneGuns = FindObjectsByType<GunPickup>();
         foreach (GunPickup gun in allSceneGuns)
         {
             if (gun != null && gun.weaponConfig != null)
             {
-                // 将它们的实时残弹重置为最大弹夹，备弹重置为配置文件的预设值
                 gun.Initialize(gun.weaponConfig, gun.weaponConfig.maxMagazineSize, gun.weaponConfig.defaultReserveAmmo);
                 gun.RefreshPickupState();
             }
         }
 
-        // 3. 将玩家自身的武器数据归位
-        if (currentWeaponData != null)
+        // 3. 遍历两个槽位，重置弹药到满状态
+        for (int i = 0; i < slots.Length; i++)
         {
-            currentAmmo = maxMagazineSize;
-            reserveAmmo = currentWeaponData.defaultReserveAmmo;
+            if (slots[i] != null && slots[i].weaponData != null)
+            {
+                slots[i].currentAmmo = slots[i].MaxMagazine;
+                slots[i].reserveAmmo = slots[i].weaponData.defaultReserveAmmo;
+            }
         }
 
         OnAmmoChanged?.Invoke();

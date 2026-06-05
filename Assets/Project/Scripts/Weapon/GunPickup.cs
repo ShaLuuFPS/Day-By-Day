@@ -24,7 +24,7 @@ public class GunPickup : MonoBehaviour, IInteractable
 
     public void RefreshPickupState()
     {
-        Renderer renderer = GetComponent<Renderer>();
+        Renderer renderer = GetComponentInChildren<Renderer>();
         if (renderer != null && weaponConfig != null)
         {
             renderer.material.color = weaponConfig.weaponName switch

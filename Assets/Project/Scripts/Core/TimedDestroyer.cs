@@ -15,6 +15,7 @@ public class TimedDestroyer : MonoBehaviour
     public float blinkInterval = 0.15f;
 
     private Renderer targetRenderer;
+    private Coroutine lifeCoroutine;
 
     void Start()
     {
@@ -22,7 +23,17 @@ public class TimedDestroyer : MonoBehaviour
         targetRenderer = GetComponentInChildren<Renderer>();
 
         // 开启全自动倒计时生命线
-        StartCoroutine(LifeTimeRoutine());
+        ResetTimer();
+    }
+
+    /// <summary>
+    /// 重置倒计时，用于武器交换等场景——旧物体需要重新开始 10 秒生命。
+    /// </summary>
+    public void ResetTimer()
+    {
+        if (lifeCoroutine != null) StopCoroutine(lifeCoroutine);
+        if (targetRenderer != null) targetRenderer.enabled = true;
+        lifeCoroutine = StartCoroutine(LifeTimeRoutine());
     }
 
     /// <summary>
