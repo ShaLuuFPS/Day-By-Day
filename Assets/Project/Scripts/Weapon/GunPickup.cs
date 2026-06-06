@@ -15,8 +15,12 @@ public class GunPickup : MonoBehaviour, IInteractable
     {
         if (weaponConfig != null && runtimeAmmo == 0 && runtimeReserve == 0)
         {
-            runtimeAmmo = weaponConfig.maxMagazineSize;
-            runtimeReserve = weaponConfig.defaultReserveAmmo;
+            GunData gd = weaponConfig as GunData;
+            if (gd != null)
+            {
+                runtimeAmmo = gd.maxMagazineSize;
+                runtimeReserve = gd.defaultReserveAmmo;
+            }
         }
         RefreshPickupState();
         gameObject.name = "GunPickup_Real";
@@ -27,12 +31,19 @@ public class GunPickup : MonoBehaviour, IInteractable
         Renderer renderer = GetComponentInChildren<Renderer>();
         if (renderer != null && weaponConfig != null)
         {
-            renderer.material.color = weaponConfig.weaponName switch
+            if (weaponConfig.weaponType == WeaponType.Melee)
             {
-                "手枪" => Color.green,
-                "霰弹枪" => Color.yellow,
-                _ => Color.red
-            };
+                renderer.material.color = Color.cyan;
+            }
+            else
+            {
+                renderer.material.color = weaponConfig.weaponName switch
+                {
+                    "手枪" => Color.green,
+                    "霰弹枪" => Color.yellow,
+                    _ => Color.red
+                };
+            }
         }
     }
 

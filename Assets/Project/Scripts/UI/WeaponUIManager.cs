@@ -111,6 +111,31 @@ public class WeaponUIManager : MonoBehaviour
 
         string weaponName = slot.weaponData != null ? slot.weaponData.weaponName : "?";
 
+        // ── 近战武器：不显示弹药，武器名加连击段数 ──
+        if (slot.IsMelee)
+        {
+            if (ammoText != null) { ammoText.text = ""; ammoText.color = Gray2; }
+
+            if (nameText != null)
+            {
+                if (isActive)
+                {
+                    nameText.color = Color.white;
+                    int combo = playerWeapon.MeleeComboStage;
+                    string comboStr = combo > 0 ? $" <size=24><color=#E9E9E9>连{combo}</color></size>" : "";
+                    nameText.text = $"<size=36>{weaponName}{comboStr}</size>";
+                }
+                else
+                {
+                    nameText.color = Gray1;
+                    nameText.text = $"<size=28>{weaponName}</size>";
+                }
+            }
+
+            ApplySlotShift(ammoText, nameText, slotIndex, isActive);
+            return;
+        }
+
         // ── 弹药行：主弹药(换行)备弹 ──
         if (ammoText != null)
         {

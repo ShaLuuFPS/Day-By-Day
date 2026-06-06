@@ -10,6 +10,12 @@ public class PlayerShooting : MonoBehaviour, IResettable
     public WeaponSlot[] slots = new WeaponSlot[2];
     public int activeSlotIndex = 0;
 
+    [Header("近战")]
+    public MeleeHitbox meleeHitbox;          // 拖入 Player 子物体上的 MeleeHitbox
+    private int meleeComboStage = 0;         // 当前连击段索引
+    private float meleeComboTimer = 0f;      // 连击窗口计时器
+    private float meleeNextAttackTime = 0f;  // 攻速冷却
+
     [Header("换弹状态（只有 activeSlot 能换弹）")]
     public bool isReloading { get; private set; } = false;
 
@@ -29,6 +35,9 @@ public class PlayerShooting : MonoBehaviour, IResettable
     // ─── 属性简写：全部委托到 activeSlot ───
     private WeaponSlot activeSlot => (slots != null && slots.Length > activeSlotIndex) ? slots[activeSlotIndex] : null;
     public WeaponData currentWeaponData => activeSlot?.weaponData;
+    private GunData currentGunData => currentWeaponData as GunData;
+    private MeleeData currentMeleeData => currentWeaponData as MeleeData;
+
     public bool hasWeapon
     {
         get
@@ -52,10 +61,13 @@ public class PlayerShooting : MonoBehaviour, IResettable
         set { if (activeSlot != null) activeSlot.reserveAmmo = value; }
     }
     public string weaponName => currentWeaponData != null ? currentWeaponData.weaponName : "未知武器";
-    public int maxMagazineSize => currentWeaponData != null ? currentWeaponData.maxMagazineSize : 7;
-    public float reloadTime => currentWeaponData != null
-        ? (currentWeaponData.isMagazineReload ? currentWeaponData.reloadTime : currentWeaponData.perShellReloadTime)
-        : 1.5f;
+    public int maxMagazineSize => currentGunData != null ? currentGunData.maxMagazineSize : 0;
+    public float reloadTime => currentGunData != null
+        ? (currentGunData.isMagazineReload ? currentGunData.reloadTime : currentGunData.perShellReloadTime)
+        : 0f;
+
+    /// <summary>近战连击段索引，UI 读取用</summary>
+    public int MeleeComboStage => meleeComboStage;
 
     /// <summary>
     /// 查找武器名称匹配的槽位索引，没找到返回 -1
@@ -106,6 +118,14 @@ public class PlayerShooting : MonoBehaviour, IResettable
     void Update()
     {
         HandlePlayerInput();
+
+        // 近战连击过期 → UI 同步回退
+        if (currentMeleeData != null && meleeComboStage > 0
+            && Time.time - meleeComboTimer > currentMeleeData.comboCooldown)
+        {
+            meleeComboStage = 0;
+            OnAmmoChanged?.Invoke();
+        }
     }
 
     private void InitializeWeapon()
@@ -123,7 +143,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     /// <summary>
     /// 切换到指定槽位的武器。空槽不能切、已在当前槽不操作。
-    /// 切枪会打断正在进行的换弹。
+    /// 切枪会打断正在进行的换弹，并重置近战连击。
     /// </summary>
     private void SwapToSlot(int index)
     {
@@ -140,6 +160,11 @@ public class PlayerShooting : MonoBehaviour, IResettable
         }
 
         activeSlotIndex = index;
+
+        // 重置近战连击
+        meleeComboStage = 0;
+        meleeComboTimer = 0f;
+
         OnAmmoChanged?.Invoke();
     }
 
@@ -159,35 +184,47 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
         if (!hasWeapon || currentWeaponData == null) return;
 
+        // ── 近战武器：只响应左键挥砍，不处理射击/换弹 ──
+        if (currentWeaponData.weaponType == WeaponType.Melee)
+        {
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+                ExecuteMelee();
+            return;
+        }
+
         // 逐发装填中：允许射击键打断（装完当前发就停），其余输入屏蔽
         if (isReloading)
         {
-            if (!currentWeaponData.isMagazineReload && Mouse.current.leftButton.wasPressedThisFrame)
+            if (currentGunData != null && !currentGunData.isMagazineReload && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 interruptReload = true;
             }
             return;
         }
 
-        // 处理射击输入
-        if (currentWeaponData.isAutomatic)
+        // 处理枪械射击输入
+        if (currentGunData != null)
         {
-            if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
+            if (currentGunData.isAutomatic)
             {
-                ExecuteShootLogic();
-                nextFireTime = Time.time + currentWeaponData.fireRate;
+                if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
+                {
+                    ExecuteGunShoot();
+                    nextFireTime = Time.time + currentGunData.fireRate;
+                }
             }
-        }
-        else
-        {
-            if (Mouse.current.leftButton.wasPressedThisFrame)
+            else
             {
-                ExecuteShootLogic();
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    ExecuteGunShoot();
+                }
             }
         }
 
-        // 处理换弹输入
-        if (Keyboard.current.rKey.wasPressedThisFrame
+        // 处理换弹输入（近战没有换弹）
+        if (currentWeaponData.weaponType != WeaponType.Melee
+            && Keyboard.current.rKey.wasPressedThisFrame
             && activeSlot.currentAmmo < maxMagazineSize
             && activeSlot.reserveAmmo > 0)
         {
@@ -195,17 +232,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
         }
     }
 
-    private void ExecuteShootLogic()
+    private void ExecuteGunShoot()
     {
         if (currentAmmo > 0)
         {
             currentAmmo--;
             OnAmmoChanged?.Invoke();
 
-            if (currentWeaponData.bulletPrefab != null && firePoint != null)
+            if (currentGunData.bulletPrefab != null && firePoint != null)
             {
-                int pellets = currentWeaponData.bulletsPerShot;
-                float spread = currentWeaponData.spreadAngle;
+                int pellets = currentGunData.bulletsPerShot;
+                float spread = currentGunData.spreadAngle;
 
                 for (int i = 0; i < pellets; i++)
                 {
@@ -219,11 +256,11 @@ public class PlayerShooting : MonoBehaviour, IResettable
                         pelletRotation = firePoint.rotation * Quaternion.Euler(randomPitch, randomYaw, 0f);
                     }
 
-                    GameObject bulletObj = Instantiate(currentWeaponData.bulletPrefab, firePoint.position, pelletRotation);
+                    GameObject bulletObj = Instantiate(currentGunData.bulletPrefab, firePoint.position, pelletRotation);
                     Bullet bulletScript = bulletObj.GetComponent<Bullet>();
                     if (bulletScript != null)
                     {
-                        bulletScript.Initialize(currentWeaponData.damage);
+                        bulletScript.Initialize(currentGunData.damage);
                     }
                 }
             }
@@ -234,12 +271,40 @@ public class PlayerShooting : MonoBehaviour, IResettable
         }
     }
 
+    private void ExecuteMelee()
+    {
+        if (currentMeleeData == null) return;
+        if (currentMeleeData.comboChain == null || currentMeleeData.comboChain.Length == 0) return;
+        if (meleeHitbox == null) return;
+
+        // 攻速冷却
+        if (Time.time < meleeNextAttackTime) return;
+
+        // 连击窗口超时 → 重置
+        if (Time.time - meleeComboTimer > currentMeleeData.comboCooldown)
+            meleeComboStage = 0;
+
+        // 防止越界
+        if (meleeComboStage >= currentMeleeData.comboChain.Length)
+            meleeComboStage = 0;
+
+        ComboStage stage = currentMeleeData.comboChain[meleeComboStage];
+        meleeHitbox.Activate(stage);
+
+        meleeNextAttackTime = Time.time + currentMeleeData.attackCooldown;
+        meleeComboStage++;
+        meleeComboTimer = Time.time;
+        OnAmmoChanged?.Invoke(); // 触发 UI 刷新（显示连击段）
+    }
+
     private IEnumerator ReloadRoutine()
     {
+        if (currentGunData == null) yield break;
+
         isReloading = true;
         interruptReload = false;
 
-        if (currentWeaponData.isMagazineReload)
+        if (currentGunData.isMagazineReload)
         {
             // ========== 弹夹式换弹（原逻辑）==========
             float elapsed = 0f;
@@ -271,7 +336,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
             while (currentAmmo < maxMagazineSize && reserveAmmo > 0 && !interruptReload)
             {
                 float shellElapsed = 0f;
-                float shellTime = currentWeaponData.perShellReloadTime;
+                float shellTime = currentGunData.perShellReloadTime;
 
                 while (shellElapsed < shellTime && !interruptReload)
                 {
@@ -298,15 +363,20 @@ public class PlayerShooting : MonoBehaviour, IResettable
     /// </summary>
     public void ExecuteInteraction(GunPickup groundGun, GameObject groundGameObject)
     {
+        bool isMelee = groundGun.weaponConfig.weaponType == WeaponType.Melee;
+
         // ── 分支 1：双手都空 → 新枪放入槽 0，切到槽 0 ──
         if (!hasWeapon)
         {
             slots[0].LoadFromConfig(groundGun.weaponConfig, true);
             if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
                 unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
-            // 如果有地面记录的弹药则使用地面数据
-            slots[0].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[0].MaxMagazine;
-            slots[0].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
+            // 如果有地面记录的弹药则使用地面数据（近战跳过）
+            if (!isMelee)
+            {
+                slots[0].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[0].MaxMagazine;
+                slots[0].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : (groundGun.weaponConfig as GunData)?.defaultReserveAmmo ?? 0;
+            }
             activeSlotIndex = 0;
             OnAmmoChanged?.Invoke();
             Destroy(groundGameObject);
@@ -325,9 +395,15 @@ public class PlayerShooting : MonoBehaviour, IResettable
                 OnReloadComplete?.Invoke();
             }
 
-            WeaponData cfg = groundGun.weaponConfig;
-            slots[matchingSlot].currentAmmo = cfg.maxMagazineSize;
-            slots[matchingSlot].reserveAmmo = cfg.defaultReserveAmmo;
+            if (!isMelee)
+            {
+                GunData gd = groundGun.weaponConfig as GunData;
+                if (gd != null)
+                {
+                    slots[matchingSlot].currentAmmo = gd.maxMagazineSize;
+                    slots[matchingSlot].reserveAmmo = gd.defaultReserveAmmo;
+                }
+            }
 
             // 切到同款武器槽
             if (activeSlotIndex != matchingSlot)
@@ -347,8 +423,11 @@ public class PlayerShooting : MonoBehaviour, IResettable
             slots[emptySlot].LoadFromConfig(groundGun.weaponConfig, true);
             if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
                 unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
-            slots[emptySlot].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[emptySlot].MaxMagazine;
-            slots[emptySlot].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
+            if (!isMelee)
+            {
+                slots[emptySlot].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[emptySlot].MaxMagazine;
+                slots[emptySlot].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : (groundGun.weaponConfig as GunData)?.defaultReserveAmmo ?? 0;
+            }
             activeSlotIndex = emptySlot;
             OnAmmoChanged?.Invoke();
             Destroy(groundGameObject);
@@ -367,8 +446,11 @@ public class PlayerShooting : MonoBehaviour, IResettable
         slots[activeSlotIndex].LoadFromConfig(groundGun.weaponConfig, true);
         if (!unlockedWeapons.Contains(groundGun.weaponConfig.weaponName))
             unlockedWeapons.Add(groundGun.weaponConfig.weaponName);
-        slots[activeSlotIndex].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[activeSlotIndex].MaxMagazine;
-        slots[activeSlotIndex].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : groundGun.weaponConfig.defaultReserveAmmo;
+        if (!isMelee)
+        {
+            slots[activeSlotIndex].currentAmmo = groundGun.runtimeAmmo > 0 ? groundGun.runtimeAmmo : slots[activeSlotIndex].MaxMagazine;
+            slots[activeSlotIndex].reserveAmmo = groundGun.runtimeReserve > 0 ? groundGun.runtimeReserve : (groundGun.weaponConfig as GunData)?.defaultReserveAmmo ?? 0;
+        }
 
         // 旧枪数据写到地面物体
         groundGun.Initialize(playerOldConfig, playerOldAmmo, playerOldReserve);
@@ -392,6 +474,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
         OnAmmoChanged?.Invoke();
     }
+
     /// <summary>
     /// 游戏重置契约：复活或重新开局时触发全局重置
     /// </summary>
@@ -400,6 +483,10 @@ public class PlayerShooting : MonoBehaviour, IResettable
         OnReloadComplete?.Invoke();
         StopAllCoroutines();
         isReloading = false;
+
+        // 重置近战连击
+        meleeComboStage = 0;
+        meleeComboTimer = 0f;
 
         // 1. 让雷达脚本清空当前的缓存数据
         PlayerInteraction radar = GetComponent<PlayerInteraction>();
@@ -411,7 +498,9 @@ public class PlayerShooting : MonoBehaviour, IResettable
         {
             if (gun != null && gun.weaponConfig != null)
             {
-                gun.Initialize(gun.weaponConfig, gun.weaponConfig.maxMagazineSize, gun.weaponConfig.defaultReserveAmmo);
+                int ammo = gun.weaponConfig is GunData gd ? gd.maxMagazineSize : 0;
+                int reserve = gun.weaponConfig is GunData gd2 ? gd2.defaultReserveAmmo : 0;
+                gun.Initialize(gun.weaponConfig, ammo, reserve);
                 gun.RefreshPickupState();
             }
         }
@@ -421,8 +510,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
         {
             if (slots[i] != null && slots[i].weaponData != null)
             {
-                slots[i].currentAmmo = slots[i].MaxMagazine;
-                slots[i].reserveAmmo = slots[i].weaponData.defaultReserveAmmo;
+                slots[i].LoadFromConfig(slots[i].weaponData, true);
             }
         }
 

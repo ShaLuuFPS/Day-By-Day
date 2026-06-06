@@ -12,7 +12,18 @@ public class WeaponSlot
     public int reserveAmmo;
 
     public bool IsEmpty => weaponData == null;
-    public int MaxMagazine => weaponData != null ? weaponData.maxMagazineSize : 0;
+    public bool IsMelee => weaponData != null && weaponData.weaponType == WeaponType.Melee;
+
+    public int MaxMagazine
+    {
+        get
+        {
+            if (weaponData == null) return 0;
+            if (weaponData.weaponType == WeaponType.Melee) return 0;
+            GunData gd = weaponData as GunData;
+            return gd != null ? gd.maxMagazineSize : 0;
+        }
+    }
 
     /// <summary>
     /// 清空槽位（丢弃武器时使用）
@@ -25,13 +36,25 @@ public class WeaponSlot
     }
 
     /// <summary>
-    /// 用 WeaponData 初始化此槽位
+    /// 用 WeaponData 初始化此槽位。近战武器忽略弹药。
     /// </summary>
     public void LoadFromConfig(WeaponData config, bool giveInitialReserve)
     {
         weaponData = config;
-        currentAmmo = config.maxMagazineSize;
-        if (giveInitialReserve)
-            reserveAmmo = config.defaultReserveAmmo;
+        if (config.weaponType == WeaponType.Melee)
+        {
+            currentAmmo = 0;
+            reserveAmmo = 0;
+        }
+        else
+        {
+            GunData gd = config as GunData;
+            if (gd != null)
+            {
+                currentAmmo = gd.maxMagazineSize;
+                if (giveInitialReserve)
+                    reserveAmmo = gd.defaultReserveAmmo;
+            }
+        }
     }
 }
