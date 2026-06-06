@@ -3,15 +3,14 @@ using UnityEngine;
 public class Bullet : MonoBehaviour
 {
     public float speed = 50f;
-    private float damage; 
+    private float damage;
+    private bool _hit = false;
 
     void Start()
     {
-        // 性能优化：子弹生成 3 秒后如果没撞到东西，自动毁灭，防止子弹飞到宇宙边缘导致电脑卡死
         Destroy(gameObject, 3f);
     }
 
-    // 🌟 核心：提供一个公开的初始化函数。枪在实例化子弹的瞬间，调用这个函数把伤害“灌”进来
     public void Initialize(float weaponDamage)
     {
         this.damage = weaponDamage;
@@ -19,24 +18,38 @@ public class Bullet : MonoBehaviour
 
     void Update()
     {
-        // 让子弹每帧沿着【它自己的正前方 (Vector3.forward)】高速移动
-        transform.Translate(Vector3.forward * speed * Time.deltaTime, Space.Self);
+        if (_hit) return;
+
+        float moveDistance = speed * Time.deltaTime;
+
+        // 射线检测防止高速子弹穿透（tunneling）：从当前位置向前扫一条射线，
+        // 如果下一帧位置之前有敌人则命中。QueryTriggerInteraction.Collide
+        // 确保能命中敌人身上的 Trigger 碰撞体。
+        if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit,
+                moveDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+        {
+            EnemyHealth enemy = hit.collider.GetComponent<EnemyHealth>();
+            if (enemy != null)
+            {
+                _hit = true;
+                enemy.TakeDamage(damage);
+                Destroy(gameObject);
+                return;
+            }
+        }
+
+        transform.Translate(Vector3.forward * moveDistance, Space.Self);
     }
-
-
 
     private void OnTriggerEnter(Collider other)
     {
-        // 1. 尝试去获取被撞物体身上挂载的 EnemyHealth 脚本组件
-        EnemyHealth enemy = other.GetComponent<EnemyHealth>();
+        if (_hit) return;
 
-        // 2. 如果成功获取到了（说明撞到的是敌人，而不是墙壁或地面）
+        EnemyHealth enemy = other.GetComponent<EnemyHealth>();
         if (enemy != null)
         {
-            // 让敌人执行受伤逻辑，把子弹的伤害量传过去
+            _hit = true;
             enemy.TakeDamage(damage);
-
-            // 3. 子弹完成了使命，立刻毁灭自身
             Destroy(gameObject);
         }
     }

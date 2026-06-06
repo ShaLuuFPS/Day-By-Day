@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStaminaConfig
   maxStamina: 100
   dashCost: 25
-  dashSpeed: 18
+  dashSpeed: 20
   dashDuration: 0.15
-  dashCooldown: 1
-  recoveryDelay: 1.5
+  dashCooldown: 0.2
+  recoveryDelay: 1
   recoveryRate: 30

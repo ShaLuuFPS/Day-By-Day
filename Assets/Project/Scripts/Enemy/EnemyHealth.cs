@@ -42,6 +42,9 @@ public class EnemyHealth : MonoBehaviour
         currentHealth -= damageAmount;
         ShowHurtEffect();
 
+        // 敌人受伤 → 红色伤害数字
+        DamageNumberManager.Spawn(transform, transform.position, damageAmount, Color.red);
+
         if (currentHealth <= 0)
             Die();
     }
@@ -72,6 +75,10 @@ public class EnemyHealth : MonoBehaviour
     {
         if (_isDead) return;
         _isDead = true;
+
+        // 立即禁用 AI，防止 Destroy 延迟导致的同帧"幽灵攻击"
+        ZombieAI ai = GetComponent<ZombieAI>();
+        if (ai != null) ai.enabled = false;
 
         if (zombieData != null && zombieData.explodeOnDeath)
             Explode();

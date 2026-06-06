@@ -215,9 +215,10 @@ public class PlayerShooting : MonoBehaviour, IResettable
             }
             else
             {
-                if (Mouse.current.leftButton.wasPressedThisFrame)
+                if (Mouse.current.leftButton.wasPressedThisFrame && Time.time >= nextFireTime)
                 {
                     ExecuteGunShoot();
+                    nextFireTime = Time.time + currentGunData.fireRate;
                 }
             }
         }

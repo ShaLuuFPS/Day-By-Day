@@ -54,6 +54,9 @@ public class PlayerHealth : MonoBehaviour, IResettable
         currentHealth -= damageAmount;
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
 
+        // 玩家受伤 → 蓝色伤害数字
+        DamageNumberManager.Spawn(transform, transform.position, damageAmount, new Color(0.3f, 0.6f, 1f));
+
         Debug.Log($"玩家受到伤害！剩余血量: {currentHealth}/{maxHealth}");
 
         UpdateHealthBar();
