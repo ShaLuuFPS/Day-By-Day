@@ -4,14 +4,16 @@ using UnityEngine.InputSystem; // 如果你上一步用了新输入系统，保�
 public class PlayerMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
-    private Vector3 moveDirection;
+    public Vector3 moveDirection { get; private set; }
 
     private PlayerHealth playerHealth;
+    private PlayerStamina playerStamina;
 
     void Start()
     {
         // 自动抓取身上挂着的血量脚本
         playerHealth = GetComponent<PlayerHealth>();
+        playerStamina = GetComponent<PlayerStamina>();
     }
     void Update()
     {
@@ -32,7 +34,12 @@ public class PlayerMovement : MonoBehaviour
         }
 
         moveDirection = new Vector3(moveX, 0f, moveZ).normalized;
-        transform.Translate(moveDirection * moveSpeed * Time.deltaTime, Space.World);
+
+        // Dash 期间跳过正常移动（Dash 自己控制位移）
+        if (playerStamina == null || !playerStamina.isDashing)
+        {
+            transform.Translate(moveDirection * moveSpeed * Time.deltaTime, Space.World);
+        }
 
         // 2. 转向逻辑：让角色面朝鼠标指向的点
         RotateToMouse();
