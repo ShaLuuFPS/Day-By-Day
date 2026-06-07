@@ -15,6 +15,8 @@ MonoBehaviour:
   zombieName: "\u666E\u901A\u50F5\u5C38"
   moveSpeed: 3.5
   stoppingDistance: 2
+  chargeSpeed: 0
+  chargeRange: 0
   attackRange: 2.5
   attackDamage: 10
   attackRate: 1
@@ -30,5 +32,9 @@ MonoBehaviour:
   explodeOnDeath: 0
   explosionRadius: 5
   explosionDamage: 50
+  explosionEffectPrefab: {fileID: 0}
+  showAttackWarning: 1
+  attackWarningDuration: 0.2
+  attackWarningPrefab: {fileID: 0}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 0.149

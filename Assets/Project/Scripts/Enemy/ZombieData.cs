@@ -10,6 +10,12 @@ public class ZombieData : ScriptableObject
     public float moveSpeed = 3.5f;
     public float stoppingDistance = 2.0f;
 
+    [Header("冲刺加速")]
+    [Tooltip("进入冲刺范围后的移动速度（0 = 不启用冲刺）")]
+    public float chargeSpeed = 0f;
+    [Tooltip("冲刺触发距离（玩家进入此范围后加速）")]
+    public float chargeRange = 0f;
+
     [Header("攻击属性")]
     public float attackRange = 2.5f;
     public float attackDamage = 10f;
@@ -46,6 +52,14 @@ public class ZombieData : ScriptableObject
     public float explosionDamage = 50f;
     [Tooltip("爆炸视觉特效预制体（带半透明材质），为空则用代码球体")]
     public GameObject explosionEffectPrefab;
+
+    [Header("攻击预警")]
+    [Tooltip("攻击前是否在地面显示范围指示器")]
+    public bool showAttackWarning = false;
+    [Tooltip("预警显示多久后攻击命中（秒）")]
+    public float attackWarningDuration = 0.6f;
+    [Tooltip("预警视觉预制体（留空则代码生成 Cylinder 圆盘兜底）")]
+    public GameObject attackWarningPrefab;
 
     [Header("掉落物")]
     public GameObject dropPrefab;

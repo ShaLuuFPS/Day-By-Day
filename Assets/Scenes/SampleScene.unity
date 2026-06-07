@@ -1559,8 +1559,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawner
   zombiePrefab: {fileID: 9068081391238404794, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
   playerTransform: {fileID: 1211310734}
-  spawnInterval: 2
-  maxZombies: 10
+  spawnInterval: 1
+  maxZombies: 6
   minRadius: 20
   maxRadius: 25
   spawnYHeight: 0.5
@@ -1571,6 +1571,9 @@ MonoBehaviour:
   - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
     weight: 1
     overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+  - zombieData: {fileID: 11400000, guid: b7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d3, type: 2}
+    weight: 0.5
+    overridePrefab: {fileID: 9068081391238404700, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8, type: 3}
 --- !u!4 &1178723189
 Transform:
   m_ObjectHideFlags: 0
@@ -1679,6 +1682,7 @@ GameObject:
   - component: {fileID: 1211310737}
   - component: {fileID: 1211310738}
   - component: {fileID: 1211310739}
+  - component: {fileID: 1211310740}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -1888,6 +1892,25 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: 8eb32f39fcbb6ea4e9ae826a8ef58a72, type: 2}
   staminaBarFill: {fileID: 1144077781}
   playerMovement: {fileID: 1211310730}
+--- !u!114 &1211310740
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1211310729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be7b6f25ee3e7614db793eebe38a40cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DamageNumberManager
+  canvas: {fileID: 1091588266}
+  mainCamera: {fileID: 330585545}
+  fontAsset: {fileID: 11400000, guid: 4b4789a118ba8e2449d777a69d9f0bfb, type: 2}
+  fontSize: 40
+  duration: 0.5
+  floatPixels: 60
+  mergeWindow: 0.08
 --- !u!1001 &1238182589
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -23,6 +23,11 @@ public class ZombieAI : MonoBehaviour
     private Coroutine flickerRoutine;
     private bool isDead = false;
 
+    // ── 攻击预警状态 ──
+    private bool _isWarning = false;
+    private Coroutine _warningRoutine;
+    private GameObject _currentWarningIndicator;
+
     void Start()
     {
         rb          = GetComponent<Rigidbody>();
@@ -42,6 +47,10 @@ public class ZombieAI : MonoBehaviour
         _attackRate       = zombieData.attackRate;
         _warningRadius    = zombieData.warningRadius;
         _suicideBomber    = zombieData.suicideBomber;
+
+        Debug.Log($"[ZombieAI] {name} ApplyConfig: showAttackWarning={zombieData.showAttackWarning} " +
+                  $"warnDur={zombieData.attackWarningDuration} attackRange={_attackRange} " +
+                  $"chargeSpeed={zombieData.chargeSpeed} chargeRange={zombieData.chargeRange}");
 
         if (rend != null)
             rend.material.color = zombieData.baseColor;
@@ -85,17 +94,38 @@ public class ZombieAI : MonoBehaviour
         // === 攻击 / 自爆判定 ===
         if (currentDistance <= _attackRange)
         {
-            if (_suicideBomber)
+            if (_suicideBomber && attackCooldownTimer <= 0f)
             {
-                // 自爆：到达攻击范围直接引爆
-                if (enemyHealth != null)
-                    enemyHealth.TriggerDeath();
-                isDead = true;
-                return;
+                if (zombieData != null && zombieData.showAttackWarning && !_isWarning)
+                {
+                    // 自爆预警：地面圈 → 等待 → 爆炸
+                    attackCooldownTimer = 999f;
+                    _warningRoutine = StartCoroutine(SuicideWarningRoutine());
+                }
+                else if (zombieData == null || !zombieData.showAttackWarning)
+                {
+                    // 即时自爆（无预警）
+                    if (enemyHealth != null)
+                        enemyHealth.TriggerDeath();
+                    isDead = true;
+                    return;
+                }
             }
 
             if (attackCooldownTimer <= 0f)
-                ExecuteAttack();
+            {
+                if (zombieData != null && zombieData.showAttackWarning && !_isWarning)
+                {
+                    // 进入攻击预警阶段（协程内生成指示器 → 等待 → 攻击）
+                    attackCooldownTimer = _attackRate + zombieData.attackWarningDuration;
+                    _warningRoutine = StartCoroutine(AttackWarningRoutine());
+                }
+                else if (zombieData == null || !zombieData.showAttackWarning)
+                {
+                    Debug.Log($"[ZombieAI] {name} 直接攻击（无预警）showWarning={zombieData?.showAttackWarning}");
+                    ExecuteAttack();
+                }
+            }
         }
 
         // 冷却倒计时
@@ -107,7 +137,12 @@ public class ZombieAI : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
         else
         {
-            Vector3 targetVelocity = directionToPlayer.normalized * _moveSpeed;
+            float effectiveSpeed = _moveSpeed;
+            if (zombieData != null && zombieData.chargeSpeed > 0f && currentDistance <= zombieData.chargeRange)
+                effectiveSpeed = zombieData.chargeSpeed;
+
+            float speedMultiplier = _isWarning ? 0.2f : 1f;
+            Vector3 targetVelocity = directionToPlayer.normalized * effectiveSpeed * speedMultiplier;
             targetVelocity.y = rb.linearVelocity.y;
             rb.linearVelocity = targetVelocity;
         }
@@ -116,12 +151,212 @@ public class ZombieAI : MonoBehaviour
     void ExecuteAttack()
     {
         if (playerTransform == null) return;
+
+        float dist = Vector3.Distance(
+            new Vector3(transform.position.x, 0, transform.position.z),
+            new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
+        );
+
+        Debug.Log($"[ZombieAI] {name} ExecuteAttack! dist={dist:F2} attackRange={_attackRange} " +
+                  $"showWarning={zombieData?.showAttackWarning} isWarning={_isWarning} dmg={_attackDamage}");
+
         PlayerHealth ph = playerTransform.GetComponent<PlayerHealth>();
         if (ph != null)
         {
             ph.TakeDamage(_attackDamage);
             attackCooldownTimer = _attackRate;
         }
+    }
+
+    // ---- 攻击预警 ----
+
+    IEnumerator AttackWarningRoutine()
+    {
+        _isWarning = true;
+
+        // 生成地面预警指示器
+        if (_currentWarningIndicator != null)
+            Destroy(_currentWarningIndicator);
+
+        _currentWarningIndicator = AttackWarningIndicator.Create(
+            transform.position,
+            _attackRange,
+            zombieData.attackWarningDuration,
+            zombieData.attackWarningPrefab
+        );
+
+        float elapsed = 0f;
+        float warningDur = zombieData.attackWarningDuration;
+
+        while (elapsed < warningDur)
+        {
+            elapsed += Time.deltaTime;
+
+            // 动态更新指示器位置（跟随敌人）
+            if (_currentWarningIndicator != null)
+                _currentWarningIndicator.transform.position = transform.position;
+
+            // 检查玩家是否还在攻击范围内（10% 容错避免边界抖动）
+            if (playerTransform == null)
+                break;
+
+            float dist = Vector3.Distance(
+                new Vector3(transform.position.x, 0, transform.position.z),
+                new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
+            );
+
+            if (dist > _attackRange * 1.1f)
+            {
+                // 玩家逃出范围 → 取消攻击
+                if (_currentWarningIndicator != null)
+                {
+                    Destroy(_currentWarningIndicator);
+                    _currentWarningIndicator = null;
+                }
+                _isWarning = false;
+                _warningRoutine = null;
+                attackCooldownTimer = 0f;
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        // 预警结束 → 严格距离检查，防止幽灵伤害
+        if (playerTransform != null)
+        {
+            float finalDist = Vector3.Distance(
+                new Vector3(transform.position.x, 0, transform.position.z),
+                new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
+            );
+            if (finalDist > _attackRange)
+            {
+                Debug.Log($"[ZombieAI] {name} 预警完成但玩家已离开范围 finalDist={finalDist:F2} > {_attackRange} → 取消");
+                // 玩家已离开攻击范围 → 取消
+                if (_currentWarningIndicator != null)
+                {
+                    Destroy(_currentWarningIndicator);
+                    _currentWarningIndicator = null;
+                }
+                _isWarning = false;
+                _warningRoutine = null;
+                attackCooldownTimer = 0f;
+                yield break;
+            }
+        }
+
+        ExecuteAttack();
+
+        // 清理指示器
+        if (_currentWarningIndicator != null)
+        {
+            Destroy(_currentWarningIndicator);
+            _currentWarningIndicator = null;
+        }
+
+        _isWarning = false;
+        _warningRoutine = null;
+    }
+
+    IEnumerator SuicideWarningRoutine()
+    {
+        _isWarning = true;
+
+        // 地面预警圈
+        if (_currentWarningIndicator != null)
+            Destroy(_currentWarningIndicator);
+
+        _currentWarningIndicator = AttackWarningIndicator.Create(
+            transform.position,
+            _attackRange,
+            zombieData.attackWarningDuration,
+            zombieData.attackWarningPrefab
+        );
+
+        float elapsed = 0f;
+        float warningDur = zombieData.attackWarningDuration;
+
+        while (elapsed < warningDur)
+        {
+            elapsed += Time.deltaTime;
+
+            if (_currentWarningIndicator != null)
+                _currentWarningIndicator.transform.position = transform.position;
+
+            if (playerTransform == null)
+                break;
+
+            float dist = Vector3.Distance(
+                new Vector3(transform.position.x, 0, transform.position.z),
+                new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
+            );
+
+            if (dist > _attackRange * 1.1f)
+            {
+                // 玩家逃出范围 → 取消自爆
+                if (_currentWarningIndicator != null)
+                {
+                    Destroy(_currentWarningIndicator);
+                    _currentWarningIndicator = null;
+                }
+                _isWarning = false;
+                _warningRoutine = null;
+                attackCooldownTimer = 0f;
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        // 预警结束 → 严格距离检查
+        if (playerTransform != null)
+        {
+            float finalDist = Vector3.Distance(
+                new Vector3(transform.position.x, 0, transform.position.z),
+                new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
+            );
+            if (finalDist > _attackRange)
+            {
+                if (_currentWarningIndicator != null)
+                {
+                    Destroy(_currentWarningIndicator);
+                    _currentWarningIndicator = null;
+                }
+                _isWarning = false;
+                _warningRoutine = null;
+                attackCooldownTimer = 0f;
+                yield break;
+            }
+        }
+
+        // 自爆
+        if (enemyHealth != null)
+            enemyHealth.TriggerDeath();
+        isDead = true;
+
+        if (_currentWarningIndicator != null)
+        {
+            Destroy(_currentWarningIndicator);
+            _currentWarningIndicator = null;
+        }
+
+        _isWarning = false;
+        _warningRoutine = null;
+    }
+
+    void OnDisable()
+    {
+        if (_warningRoutine != null)
+        {
+            StopCoroutine(_warningRoutine);
+            _warningRoutine = null;
+        }
+        if (_currentWarningIndicator != null)
+        {
+            Destroy(_currentWarningIndicator);
+            _currentWarningIndicator = null;
+        }
+        _isWarning = false;
     }
 
     // ---- 闪烁 ----

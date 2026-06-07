@@ -12,15 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1d9039acd4471ef48b0949086ce347fe, type: 3}
   m_Name: Shotgun_Config
   m_EditorClassIdentifier: Assembly-CSharp::GunData
-  weaponName: "霰弹枪"
+  weaponName: "\u9730\u5F39\u67AA"
+  weaponType: 0
   maxMagazineSize: 6
   reloadTime: 2.5
-  isMagazineReload: 0
-  perShellReloadTime: 0.3
-  fireRate: 0.8
+  fireRate: 0.4
   isAutomatic: 0
   damage: 8
   defaultReserveAmmo: 36
+  isMagazineReload: 0
+  perShellReloadTime: 0.3
   bulletsPerShot: 8
   spreadAngle: 6
   bulletPrefab: {fileID: 400205377062518458, guid: 491a464fd864a2d4992bcaa81029b1db, type: 3}
