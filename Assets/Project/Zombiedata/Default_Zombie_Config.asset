@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: Default_Zombie_Config
   m_EditorClassIdentifier: Assembly-CSharp::ZombieData
   zombieName: "\u666E\u901A\u50F5\u5C38"
-  moveSpeed: 3.5
+  moveSpeed: 5
   stoppingDistance: 2
   chargeSpeed: 0
   chargeRange: 0
   attackRange: 2.5
   attackDamage: 10
   attackRate: 1
-  maxHealth: 30
+  maxHealth: 40
   baseColor: {r: 0, g: 1, b: 0, a: 1}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.1
@@ -34,7 +34,9 @@ MonoBehaviour:
   explosionDamage: 50
   explosionEffectPrefab: {fileID: 0}
   showAttackWarning: 1
-  attackWarningDuration: 0.2
+  attackWarningDuration: 0.3
   attackWarningPrefab: {fileID: 0}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 0.149
+  xpReward: 10
+  killBelowY: -50

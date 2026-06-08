@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f9, type: 3}
   m_Name: CorpseExplosion_Upgrade
   m_EditorClassIdentifier: Assembly-CSharp::UpgradeData
-  upgradeName: "尸体爆炸"
-  description: "击杀敌人时产生爆炸，伤害周围敌人"
+  upgradeName: "\u5C38\u4F53\u7206\u70B8"
+  description: "\u51FB\u6740\u4EA7\u751F3m\u8303\u56F4\u7206\u70B8\uFF0C\u4F24\u5BB320"
   icon: {fileID: 0}
   upgradeType: 2

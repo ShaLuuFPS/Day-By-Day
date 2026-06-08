@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f9, type: 3}
   m_Name: PiercingRounds_Upgrade
   m_EditorClassIdentifier: Assembly-CSharp::UpgradeData
-  upgradeName: "穿透弹"
-  description: "子弹穿透敌人，不再在命中后消失"
+  upgradeName: "\u7A7F\u900F\u5F39"
+  description: "\u5B50\u5F39\u7A7F\u900F1\u4E2A\u654C\u4EBA\uFF0C\u547D\u4E2D\u540E\u4E0D\u6D88\u5931"
   icon: {fileID: 0}
   upgradeType: 0

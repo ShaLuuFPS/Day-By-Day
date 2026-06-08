@@ -15,6 +15,15 @@ public class ZombieAI : MonoBehaviour
     private float _warningRadius    = 0f;
     private bool  _suicideBomber    = false;
 
+    /// <summary>原始移速缓存（供 SlowEffect 恢复用）</summary>
+    public float OriginalMoveSpeed { get; private set; }
+
+    /// <summary>外部修改移速（升级减速弹等），同时更新 OriginalMoveSpeed</summary>
+    public void SetMoveSpeed(float speed)
+    {
+        _moveSpeed = speed;
+    }
+
     private float attackCooldownTimer = 0f;
     private Transform playerTransform;
     private Rigidbody rb;
@@ -41,6 +50,7 @@ public class ZombieAI : MonoBehaviour
         if (zombieData == null) return;
 
         _moveSpeed        = zombieData.moveSpeed;
+        OriginalMoveSpeed = zombieData.moveSpeed;
         _stoppingDistance = zombieData.stoppingDistance;
         _attackRange      = zombieData.attackRange;
         _attackDamage     = zombieData.attackDamage;

@@ -4,7 +4,7 @@ using UnityEngine;
 /// 经验球 —— 击杀敌人掉落，大小随 XP 缩放，靠近玩家时自动飞向吸收。
 /// 贴地用 DropHelper，闪烁+自动销毁用 TimedDestroyer（不重复造轮子）。
 /// </summary>
-public class XPOrb : MonoBehaviour
+public class XPOrb : MonoBehaviour, IResettable
 {
     [Tooltip("该经验球提供的 XP 量（由 EnemyHealth 设置）")]
     public float xpAmount = 10f;
@@ -66,6 +66,11 @@ public class XPOrb : MonoBehaviour
             playerTransform = player.transform;
             playerXP = player.GetComponent<PlayerXP>();
         }
+    }
+
+    public void ResetData()
+    {
+        Destroy(gameObject);
     }
 
     void Update()

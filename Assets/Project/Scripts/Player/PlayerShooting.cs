@@ -15,6 +15,7 @@ public class PlayerShooting : MonoBehaviour, IResettable
     private int meleeComboStage = 0;         // 当前连击段索引
     private float meleeComboTimer = 0f;      // 连击窗口计时器
     private float meleeNextAttackTime = 0f;  // 攻速冷却
+    private bool meleeHolding = false;       // 按住左键显示范围中
 
     [Header("换弹状态（只有 activeSlot 能换弹）")]
     public bool isReloading { get; private set; } = false;
@@ -117,6 +118,9 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void Update()
     {
+        // 升级面板打开时冻结输入
+        if (LevelUpManager.IsPaused) return;
+
         HandlePlayerInput();
 
         // 近战连击过期 → UI 同步回退
@@ -184,11 +188,10 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
         if (!hasWeapon || currentWeaponData == null) return;
 
-        // ── 近战武器：只响应左键挥砍，不处理射击/换弹 ──
+        // ── 近战武器：按住显示范围，松开攻击 ──
         if (currentWeaponData.weaponType == WeaponType.Melee)
         {
-            if (Mouse.current.leftButton.wasPressedThisFrame)
-                ExecuteMelee();
+            HandleMeleeInput();
             return;
         }
 
@@ -270,6 +273,43 @@ public class PlayerShooting : MonoBehaviour, IResettable
         {
             OnEmptyClipFired?.Invoke();
         }
+    }
+
+    void HandleMeleeInput()
+    {
+        // 按住左键：显示当前连击段的范围预览
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            meleeHolding = true;
+            ShowMeleeRange();
+        }
+
+        // 持续按住：不断刷新范围（跟随玩家朝向）
+        if (Mouse.current.leftButton.isPressed && meleeHolding)
+        {
+            if (meleeHitbox != null)
+                meleeHitbox.KeepShowingRange();
+        }
+
+        // 松开左键：执行攻击
+        if (!Mouse.current.leftButton.isPressed && meleeHolding)
+        {
+            meleeHolding = false;
+            ExecuteMelee();
+        }
+    }
+
+    void ShowMeleeRange()
+    {
+        if (meleeHitbox == null || currentMeleeData == null) return;
+        if (currentMeleeData.comboChain == null || currentMeleeData.comboChain.Length == 0) return;
+
+        int stageIdx = meleeComboStage;
+        if (stageIdx >= currentMeleeData.comboChain.Length)
+            stageIdx = 0;
+
+        var stage = currentMeleeData.comboChain[stageIdx];
+        meleeHitbox.ShowRangeIndicator(stage.range * stage.rangeMultiplier, stage.fanAngle);
     }
 
     private void ExecuteMelee()

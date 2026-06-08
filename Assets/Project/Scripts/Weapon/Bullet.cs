@@ -4,11 +4,24 @@ public class Bullet : MonoBehaviour
 {
     public float speed = 50f;
     private float damage;
+    public float Damage => damage;
     private bool _hit = false;
+
+    /// <summary>穿透弹剩余穿透次数（>0 时命中不销毁）</summary>
+    public int remainingPierce = 0;
+    /// <summary>标记为分裂弹（防止无限递归分裂）</summary>
+    public bool isSplitBullet = false;
+
+    /// <summary>子弹命中敌人时触发，供 UpgradeManager / Effect 订阅</summary>
+    public static event System.Action<Bullet, EnemyHealth> OnBulletHitEnemy;
 
     void Start()
     {
         Destroy(gameObject, 3f);
+
+        // 穿透弹：从 UpgradeManager 读取当前穿透次数
+        if (UpgradeManager.PierceCount > 0 && remainingPierce <= 0)
+            remainingPierce = UpgradeManager.PierceCount;
     }
 
     public void Initialize(float weaponDamage)
@@ -22,18 +35,13 @@ public class Bullet : MonoBehaviour
 
         float moveDistance = speed * Time.deltaTime;
 
-        // 射线检测防止高速子弹穿透（tunneling）：从当前位置向前扫一条射线，
-        // 如果下一帧位置之前有敌人则命中。QueryTriggerInteraction.Collide
-        // 确保能命中敌人身上的 Trigger 碰撞体。
         if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit,
                 moveDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
         {
             EnemyHealth enemy = hit.collider.GetComponent<EnemyHealth>();
             if (enemy != null)
             {
-                _hit = true;
-                enemy.TakeDamage(damage);
-                Destroy(gameObject);
+                HandleHit(enemy);
                 return;
             }
         }
@@ -48,9 +56,25 @@ public class Bullet : MonoBehaviour
         EnemyHealth enemy = other.GetComponent<EnemyHealth>();
         if (enemy != null)
         {
-            _hit = true;
-            enemy.TakeDamage(damage);
-            Destroy(gameObject);
+            HandleHit(enemy);
         }
+    }
+
+    void HandleHit(EnemyHealth enemy)
+    {
+        enemy.TakeDamage(damage);
+
+        // 通知所有升级效果（分裂弹、减速弹、电磁弹等在此响应）
+        OnBulletHitEnemy?.Invoke(this, enemy);
+
+        // 穿透弹：命中后不销毁，继续飞行
+        if (remainingPierce > 0)
+        {
+            remainingPierce--;
+            return; // 不销毁，继续穿透
+        }
+
+        _hit = true;
+        Destroy(gameObject);
     }
 }

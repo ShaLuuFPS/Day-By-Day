@@ -24,6 +24,9 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
     private List<UpgradeData> chosenUpgrades = new List<UpgradeData>();
 
+    /// <summary>升级面板打开时为 true，PlayerMovement / PlayerShooting 读取此值冻结输入</summary>
+    public static bool IsPaused { get; private set; } = false;
+
     /// <summary>玩家选择升级后触发</summary>
     public static event System.Action<UpgradeData> OnUpgradeChosen;
 
@@ -54,8 +57,16 @@ public class LevelUpManager : MonoBehaviour, IResettable
             return;
         }
 
-        // 暂停游戏
+        // 检查是否所有升级都已选过
+        if (chosenUpgrades.Count >= upgradePool.Length)
+        {
+            Debug.Log("[LevelUpManager] 所有升级已选完，跳过");
+            return;
+        }
+
+        // 暂停游戏 + 冻结玩家输入
         Time.timeScale = 0f;
+        IsPaused = true;
         ShowChoices();
     }
 
@@ -108,26 +119,41 @@ public class LevelUpManager : MonoBehaviour, IResettable
         if (levelUpPanel != null)
             levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
+        IsPaused = false;
     }
 
     UpgradeData[] PickRandomUpgrades(int count)
     {
         if (upgradePool.Length == 0) return null;
 
-        int actualCount = Mathf.Min(count, upgradePool.Length);
+        // 过滤掉已选择过的升级（不重复出现）
+        var available = new List<UpgradeData>();
+        foreach (var u in upgradePool)
+        {
+            if (!chosenUpgrades.Contains(u))
+                available.Add(u);
+        }
+
+        if (available.Count == 0)
+        {
+            Debug.Log("[LevelUpManager] 所有升级已选完，不再弹出选择面板");
+            return null;
+        }
+
+        int actualCount = Mathf.Min(count, available.Count);
 
         // Fisher-Yates 部分洗牌
-        UpgradeData[] poolCopy = (UpgradeData[])upgradePool.Clone();
         for (int i = 0; i < actualCount; i++)
         {
-            int randomIndex = Random.Range(i, poolCopy.Length);
-            var temp = poolCopy[i];
-            poolCopy[i] = poolCopy[randomIndex];
-            poolCopy[randomIndex] = temp;
+            int randomIndex = Random.Range(i, available.Count);
+            var temp = available[i];
+            available[i] = available[randomIndex];
+            available[randomIndex] = temp;
         }
 
         UpgradeData[] result = new UpgradeData[actualCount];
-        System.Array.Copy(poolCopy, result, actualCount);
+        for (int i = 0; i < actualCount; i++)
+            result[i] = available[i];
         return result;
     }
 
@@ -136,7 +162,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null)
         {
-            canvas = Object.FindFirstObjectByType<Canvas>();
+            canvas = Object.FindAnyObjectByType<Canvas>();
             if (canvas == null)
             {
                 Debug.LogError("[LevelUpManager] 找不到 Canvas！");
@@ -210,8 +236,16 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
     TMP_FontAsset GetDefaultFont()
     {
-        // 尝试从场景已有的 TMP 文本获取字体
-        TextMeshProUGUI existing = Object.FindFirstObjectByType<TextMeshProUGUI>();
+        // 优先查找中文字体（MSYH / 微软雅黑），否则 LiberationSans 不支持 CJK 会显示方块
+        var allFonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+        foreach (var f in allFonts)
+        {
+            if (f.name.Contains("MSYH") || f.name.Contains("YaHei") || f.name.Contains("Microsoft"))
+                return f;
+        }
+
+        // Fallback: 复用场景中已有的 TMP 字体
+        TextMeshProUGUI existing = Object.FindAnyObjectByType<TextMeshProUGUI>();
         return existing != null ? existing.font : null;
     }
 

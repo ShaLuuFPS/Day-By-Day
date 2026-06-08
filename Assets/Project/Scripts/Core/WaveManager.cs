@@ -50,7 +50,7 @@ public class WaveManager : MonoBehaviour, IResettable
     void OnEnable()  => EnemyHealth.OnAnyEnemyDied += OnEnemyDied;
     void OnDisable() => EnemyHealth.OnAnyEnemyDied -= OnEnemyDied;
 
-    void OnEnemyDied()
+    void OnEnemyDied(EnemyHealth enemy)
     {
         // 只在生成中或等待清场时追踪存活数
         if (state == WaveState.Spawning || state == WaveState.WaitingForClear)

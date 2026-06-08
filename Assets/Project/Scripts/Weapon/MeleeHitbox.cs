@@ -65,6 +65,30 @@ public class MeleeHitbox : MonoBehaviour
     }
 
     /// <summary>
+    /// 按住左键时显示攻击范围（不攻击），PlayerShooting.HandleMeleeInput 调用
+    /// </summary>
+    public void ShowRangeIndicator(float drawRange, float drawAngle)
+    {
+        this.range = drawRange;
+        this.fanAngle = drawAngle;
+        fanShowTimer = 9999f; // 持续显示直到松开
+        UpdateFanVisual(drawRange, drawAngle);
+        if (fanVisual != null) fanVisual.SetActive(true);
+    }
+
+    /// <summary>
+    /// 按住期间每帧刷新范围朝向（跟随玩家旋转）
+    /// </summary>
+    public void KeepShowingRange()
+    {
+        if (fanShowTimer > 0f)
+        {
+            fanShowTimer = 9999f; // 保持显示
+            UpdateFanVisual(range, fanAngle);
+        }
+    }
+
+    /// <summary>
     /// PlayerShooting 调用此方法激活一刀
     /// </summary>
     public void Activate(ComboStage stage)
@@ -80,9 +104,9 @@ public class MeleeHitbox : MonoBehaviour
         hitTargets.Clear();
         isAttacking = true;
 
-        // 刷新面片 + 重置显示计时器
+        // 刷新面片 + 重置显示计时器（显示时长 = 攻击窗口时长）
         UpdateFanVisual(range, fanAngle);
-        fanShowTimer = fanShowDuration;
+        fanShowTimer = activeTime;
 
         ScanHit();
 

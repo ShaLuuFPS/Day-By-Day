@@ -22,6 +22,11 @@ public class PlayerMovement : MonoBehaviour
         {
             return;
         }
+        // 升级面板打开时冻结输入
+        if (LevelUpManager.IsPaused)
+        {
+            return;
+        }
         // 1. 移动逻辑（保持不变）
         float moveX = 0f;
         float moveZ = 0f;

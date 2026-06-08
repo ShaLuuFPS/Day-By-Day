@@ -36,5 +36,5 @@ MonoBehaviour:
     hitboxActiveTime: 0.3
     damageMultiplier: 1.5
     rangeMultiplier: 1.2
-  comboCooldown: 1.5
+  comboCooldown: 2.5
   attackCooldown: 0.4

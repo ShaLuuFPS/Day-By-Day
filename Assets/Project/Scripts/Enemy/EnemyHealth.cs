@@ -6,8 +6,9 @@ public class EnemyHealth : MonoBehaviour
 {
     /// <summary>
     /// 任意敌人死亡时触发的静态事件（WaveManager 等系统通过此事件追踪存活数）
+    /// 参数为死亡敌人自身引用，供 UpgradeEffect 读取位置/数据
     /// </summary>
-    public static event System.Action OnAnyEnemyDied;
+    public static event System.Action<EnemyHealth> OnAnyEnemyDied;
 
     [Header("僵尸配置")]
     public ZombieData zombieData;
@@ -85,8 +86,8 @@ public class EnemyHealth : MonoBehaviour
         if (_isDead) return;
         _isDead = true;
 
-        // 通知外部系统（WaveManager 等）有敌人死亡
-        OnAnyEnemyDied?.Invoke();
+        // 通知外部系统（WaveManager / UpgradeManager 等）有敌人死亡
+        OnAnyEnemyDied?.Invoke(this);
 
         // 立即禁用 AI，防止 Destroy 延迟导致的同帧"幽灵攻击"
         ZombieAI ai = GetComponent<ZombieAI>();
@@ -100,7 +101,7 @@ public class EnemyHealth : MonoBehaviour
         Destroy(gameObject);
     }
 
-    void Explode()
+    public void Explode()
     {
         float radius = zombieData.explosionRadius;
         float damage = zombieData.explosionDamage;

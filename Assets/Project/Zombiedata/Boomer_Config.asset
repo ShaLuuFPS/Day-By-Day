@@ -20,7 +20,7 @@ MonoBehaviour:
   attackRange: 2.5
   attackDamage: 10
   attackRate: 1
-  maxHealth: 15
+  maxHealth: 50
   baseColor: {r: 0.7764706, g: 0.76293945, b: 0.15294117, a: 1}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.1

@@ -82,7 +82,10 @@ public class EnemySpawner : MonoBehaviour, IResettable
         if (prefabToUse == null) return;
 
         // 重试找有效地面（避免虚空生成）
+        // 用 RaycastAll 取最低点，防止单个 Raycast 被空中装饰物/树冠误判为地面
         const int maxRetries = 10;
+        const float rayStartY = 100f;
+        const float rayLength = 200f;
         Vector3 spawnPosition = Vector3.zero;
         bool validGround = false;
 
@@ -92,10 +95,34 @@ public class EnemySpawner : MonoBehaviour, IResettable
             float rd = UnityEngine.Random.Range(minRadius, maxRadius);
             Vector3 candidate = playerTransform.position + new Vector3(rp.x, 0f, rp.y) * rd;
 
-            Vector3 rayOrigin = new Vector3(candidate.x, 100f, candidate.z);
-            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 200f) && hit.point.y > -10f)
+            Vector3 rayOrigin = new Vector3(candidate.x, rayStartY, candidate.z);
+            RaycastHit[] hits = Physics.RaycastAll(rayOrigin, Vector3.down, rayLength);
+
+            // RaycastAll → 取最低命中点（真正的"地面"），避免空中装饰物被单次 Raycast 误判
+            float lowestY = float.MaxValue;
+            bool foundAny = false;
+            foreach (var h in hits)
             {
-                spawnPosition = hit.point + Vector3.up * 0.1f;
+                if (h.collider.isTrigger) continue;
+                if (h.point.y < lowestY)
+                {
+                    lowestY = h.point.y;
+                    foundAny = true;
+                }
+            }
+
+            if (foundAny && lowestY > -10f)
+            {
+                // 按僵尸的碰撞体高度做偏移，确保脚底贴地
+                // 兼容 CapsuleCollider、BoxCollider、CharacterController 等所有碰撞体类型
+                float colliderHalfHeight = 1f; // 默认 2m 高胶囊体
+                if (prefabToUse != null)
+                {
+                    Collider col = prefabToUse.GetComponent<Collider>();
+                    if (col != null)
+                        colliderHalfHeight = col.bounds.extents.y;
+                }
+                spawnPosition = new Vector3(candidate.x, lowestY + colliderHalfHeight + 0.05f, candidate.z);
                 validGround = true;
                 break;
             }
@@ -111,10 +138,12 @@ public class EnemySpawner : MonoBehaviour, IResettable
         newZombie.name = selectedData != null ? selectedData.zombieName : "Spawned_Zombie";
         newZombie.transform.SetParent(this.transform);
 
+        Debug.Log($"[Spawner] 生成 {newZombie.name} 在 Y={spawnPosition.y:F2}");
+
         // 注入 ZombieData 配置
         if (selectedData != null)
         {
-            Debug.Log($"[Spawner] 生成 {selectedData.zombieName}（权重={selectedEntry.weight}）");
+            Debug.Log($"[Spawner] 配置: {selectedData.zombieName}（权重={selectedEntry.weight}）");
 
             ZombieAI ai = newZombie.GetComponent<ZombieAI>();
             if (ai != null)
