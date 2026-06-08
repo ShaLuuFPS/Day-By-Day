@@ -65,4 +65,12 @@ public class ZombieData : ScriptableObject
     public GameObject dropPrefab;
     [Range(0f, 1f)]
     public float dropProbability = 0.2f;
+
+    [Header("经验值")]
+    [Tooltip("击杀后掉落经验值")]
+    public float xpReward = 10f;
+
+    [Header("边界")]
+    [Tooltip("Y 低于此值自动视为坠落死亡（触发击杀/经验/波次追踪）")]
+    public float killBelowY = -50f;
 }

@@ -12,6 +12,10 @@ public class EnemyHealth : MonoBehaviour
     [Header("僵尸配置")]
     public ZombieData zombieData;
 
+    [Header("经验球")]
+    [Tooltip("经验球预制体（留空则不生成）")]
+    public GameObject xpOrbPrefab;
+
     private float _maxHealth         = 30f;
     private Color _hurtColor         = Color.red;
     private float _hurtFlashDuration = 0.1f;
@@ -92,6 +96,7 @@ public class EnemyHealth : MonoBehaviour
             Explode();
 
         TryDropLoot();
+        SpawnXPOrb();
         Destroy(gameObject);
     }
 
@@ -164,9 +169,8 @@ public class EnemyHealth : MonoBehaviour
 
         if (UnityEngine.Random.value <= zombieData.dropProbability)
         {
-            Vector3 spawnPos = transform.position + Vector3.up * 0.1f;
-            GameObject drop = Instantiate(zombieData.dropPrefab, spawnPos, Quaternion.identity);
-            // 标记以便重启游戏时清理
+            GameObject drop = Instantiate(zombieData.dropPrefab, transform.position, Quaternion.identity);
+            DropHelper.PlaceOnGround(drop.transform);
             if (!drop.GetComponent<LootDrop>())
                 drop.AddComponent<LootDrop>();
         }
@@ -184,5 +188,36 @@ public class EnemyHealth : MonoBehaviour
             return Mathf.Max(b.extents.x, b.extents.z);
         }
         return 0.5f; // 兜底：默认球体半径
+    }
+
+    void SpawnXPOrb()
+    {
+        if (zombieData == null || zombieData.xpReward <= 0f) return;
+
+        // 粗略初始位置（XPOrb.Start() 会射线找地面精确定位）
+        Vector3 spawnPos = transform.position;
+
+        GameObject orb;
+        if (xpOrbPrefab != null)
+        {
+            orb = Instantiate(xpOrbPrefab, spawnPos, Quaternion.identity);
+        }
+        else
+        {
+            // 代码兜底：绿色半透明球体（缩放由 XPOrb.Start 按 XP 量设置）
+            orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            orb.transform.position = spawnPos;
+            Destroy(orb.GetComponent<Collider>());
+
+            Renderer r = orb.GetComponent<Renderer>();
+            Material mat = new Material(Shader.Find("Standard"));
+            mat.color = new Color(0, 1, 0, 0.7f);
+            r.material = mat;
+        }
+
+        XPOrb xpOrb = orb.GetComponent<XPOrb>();
+        if (xpOrb == null)
+            xpOrb = orb.AddComponent<XPOrb>();
+        xpOrb.xpAmount = zombieData.xpReward;
     }
 }

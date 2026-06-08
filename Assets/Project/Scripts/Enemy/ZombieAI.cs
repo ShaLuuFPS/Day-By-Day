@@ -64,6 +64,16 @@ public class ZombieAI : MonoBehaviour
     {
         if (rb == null || isDead) return;
 
+        // 坠落击杀：掉到悬崖/虚空下方时走正常死亡流程
+        if (zombieData != null && transform.position.y < zombieData.killBelowY)
+        {
+            Debug.Log($"[ZombieAI] {name} 坠落至 Y={transform.position.y:F1} < {zombieData.killBelowY}，触发死亡");
+            if (enemyHealth != null)
+                enemyHealth.TriggerDeath();
+            isDead = true;
+            return;
+        }
+
         if (playerTransform == null)
         {
             GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -74,6 +84,9 @@ public class ZombieAI : MonoBehaviour
         Vector3 directionToPlayer = playerTransform.position - transform.position;
         directionToPlayer.y = 0f;
         float currentDistance = directionToPlayer.magnitude;
+
+        // 完整 3D 距离用于攻击判定，防止地图下方/上方的僵尸幽灵攻击
+        float fullDistance = Vector3.Distance(transform.position, playerTransform.position);
 
         // 面向玩家
         if (directionToPlayer != Vector3.zero)
@@ -91,24 +104,17 @@ public class ZombieAI : MonoBehaviour
                 StopFlicker();
         }
 
-        // === 攻击 / 自爆判定 ===
-        if (currentDistance <= _attackRange)
+        // === 攻击 / 自爆判定（3D 距离防幽灵伤害）===
+        if (fullDistance <= _attackRange)
         {
             if (_suicideBomber && attackCooldownTimer <= 0f)
             {
-                if (zombieData != null && zombieData.showAttackWarning && !_isWarning)
+                if (!_isWarning)
                 {
-                    // 自爆预警：地面圈 → 等待 → 爆炸
+                    // 自爆：永远有等待时间，showAttackWarning 只管是否显示地面圈
                     attackCooldownTimer = 999f;
-                    _warningRoutine = StartCoroutine(SuicideWarningRoutine());
-                }
-                else if (zombieData == null || !zombieData.showAttackWarning)
-                {
-                    // 即时自爆（无预警）
-                    if (enemyHealth != null)
-                        enemyHealth.TriggerDeath();
-                    isDead = true;
-                    return;
+                    bool showIndicator = zombieData != null && zombieData.showAttackWarning;
+                    _warningRoutine = StartCoroutine(SuicideWarningRoutine(showIndicator));
                 }
             }
 
@@ -135,6 +141,8 @@ public class ZombieAI : MonoBehaviour
         // 移动
         if (currentDistance <= _stoppingDistance && !_suicideBomber)
             rb.linearVelocity = Vector3.zero;
+        else if (_suicideBomber && _isWarning && currentDistance <= _attackRange * 0.8f)
+            rb.linearVelocity = Vector3.zero; // 贴脸时停，不推玩家；远了继续追
         else
         {
             float effectiveSpeed = _moveSpeed;
@@ -153,10 +161,7 @@ public class ZombieAI : MonoBehaviour
     {
         if (playerTransform == null) return;
 
-        float dist = Vector3.Distance(
-            new Vector3(transform.position.x, 0, transform.position.z),
-            new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
-        );
+        float dist = Vector3.Distance(transform.position, playerTransform.position);
 
         Debug.Log($"[ZombieAI] {name} ExecuteAttack! dist={dist:F2} attackRange={_attackRange} " +
                   $"showWarning={zombieData?.showAttackWarning} isWarning={_isWarning} dmg={_attackDamage}");
@@ -201,10 +206,7 @@ public class ZombieAI : MonoBehaviour
             if (playerTransform == null)
                 break;
 
-            float dist = Vector3.Distance(
-                new Vector3(transform.position.x, 0, transform.position.z),
-                new Vector3(playerTransform.position.x, 0, playerTransform.position.z)
-            );
+            float dist = Vector3.Distance(transform.position, playerTransform.position);
 
             if (dist > _attackRange * 1.1f)
             {
@@ -259,20 +261,23 @@ public class ZombieAI : MonoBehaviour
         _warningRoutine = null;
     }
 
-    IEnumerator SuicideWarningRoutine()
+    IEnumerator SuicideWarningRoutine(bool showIndicator)
     {
         _isWarning = true;
 
-        // 地面预警圈
-        if (_currentWarningIndicator != null)
-            Destroy(_currentWarningIndicator);
+        // 地面预警圈（仅在 showAttackWarning 开启时显示）
+        if (showIndicator)
+        {
+            if (_currentWarningIndicator != null)
+                Destroy(_currentWarningIndicator);
 
-        _currentWarningIndicator = AttackWarningIndicator.Create(
-            transform.position,
-            _attackRange,
-            zombieData.attackWarningDuration,
-            zombieData.attackWarningPrefab
-        );
+            _currentWarningIndicator = AttackWarningIndicator.Create(
+                transform.position,
+                _attackRange,
+                zombieData.attackWarningDuration,
+                zombieData.attackWarningPrefab
+            );
+        }
 
         float elapsed = 0f;
         float warningDur = zombieData.attackWarningDuration;

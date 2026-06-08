@@ -38,3 +38,4 @@ MonoBehaviour:
   attackWarningPrefab: {fileID: 0}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 1
+  xpReward: 100

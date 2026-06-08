@@ -69,25 +69,43 @@ public class EnemySpawner : MonoBehaviour, IResettable
 
     public void SpawnOneEnemy()
     {
-        Vector2 randomCirclePoint = UnityEngine.Random.insideUnitCircle.normalized;
-        float randomDistance = UnityEngine.Random.Range(minRadius, maxRadius);
-        Vector3 spawnOffset = new Vector3(randomCirclePoint.x, 0f, randomCirclePoint.y) * randomDistance;
-        Vector3 spawnPosition = playerTransform.position + spawnOffset;
-        spawnPosition.y = spawnYHeight;
+        if (playerTransform == null) return;
 
-        // 按权重随机抽取一条生成条目
+        // 按权重随机抽取一条生成条目（只抽一次）
         ZombieSpawnEntry selectedEntry = PickEntryByWeight();
         ZombieData selectedData = selectedEntry?.zombieData;
 
-        if (selectedEntry == null)
-            Debug.LogWarning("[Spawner] spawnEntries 为空，所有僵尸将使用默认配置！请在 Inspector 添加至少一条生成条目。");
-
-        // 优先使用条目专属预制体，回退到 Spawner 默认预制体
         GameObject prefabToUse = (selectedEntry != null && selectedEntry.overridePrefab != null)
             ? selectedEntry.overridePrefab
             : zombiePrefab;
 
         if (prefabToUse == null) return;
+
+        // 重试找有效地面（避免虚空生成）
+        const int maxRetries = 10;
+        Vector3 spawnPosition = Vector3.zero;
+        bool validGround = false;
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            Vector2 rp = UnityEngine.Random.insideUnitCircle.normalized;
+            float rd = UnityEngine.Random.Range(minRadius, maxRadius);
+            Vector3 candidate = playerTransform.position + new Vector3(rp.x, 0f, rp.y) * rd;
+
+            Vector3 rayOrigin = new Vector3(candidate.x, 100f, candidate.z);
+            if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 200f) && hit.point.y > -10f)
+            {
+                spawnPosition = hit.point + Vector3.up * 0.1f;
+                validGround = true;
+                break;
+            }
+        }
+
+        if (!validGround)
+        {
+            Debug.LogWarning("[Spawner] " + maxRetries + " 次重试未找到有效地面，放弃生成");
+            return;
+        }
 
         GameObject newZombie = Instantiate(prefabToUse, spawnPosition, Quaternion.identity);
         newZombie.name = selectedData != null ? selectedData.zombieName : "Spawned_Zombie";
