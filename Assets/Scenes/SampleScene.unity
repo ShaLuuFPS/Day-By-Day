@@ -1538,6 +1538,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1178723189}
   - component: {fileID: 1178723188}
+  - component: {fileID: 1876543219}
   m_Layer: 0
   m_Name: SpawnerManager
   m_TagString: Untagged
@@ -1563,6 +1564,7 @@ MonoBehaviour:
   maxZombies: 6
   minRadius: 20
   maxRadius: 25
+  autoSpawn: 0
   spawnYHeight: 0.5
   spawnEntries:
   - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
@@ -1574,6 +1576,24 @@ MonoBehaviour:
   - zombieData: {fileID: 11400000, guid: b7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d3, type: 2}
     weight: 0.5
     overridePrefab: {fileID: 9068081391238404700, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8, type: 3}
+--- !u!114 &1876543219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1178723187}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b2e1c9d4f6a8c0e3d5b7f9a1c3e5d2f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::WaveManager
+  waveConfig: {fileID: 11400000, guid: d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a1, type: 2}
+  enemySpawner: {fileID: 1178723188}
+  currentWaveIndex: 0
+  spawnedCount: 0
+  aliveCount: 0
+  state: 0
 --- !u!4 &1178723189
 Transform:
   m_ObjectHideFlags: 0

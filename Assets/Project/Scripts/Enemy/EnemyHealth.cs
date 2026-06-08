@@ -4,6 +4,11 @@ using System.Collections.Generic;
 
 public class EnemyHealth : MonoBehaviour
 {
+    /// <summary>
+    /// 任意敌人死亡时触发的静态事件（WaveManager 等系统通过此事件追踪存活数）
+    /// </summary>
+    public static event System.Action OnAnyEnemyDied;
+
     [Header("僵尸配置")]
     public ZombieData zombieData;
 
@@ -75,6 +80,9 @@ public class EnemyHealth : MonoBehaviour
     {
         if (_isDead) return;
         _isDead = true;
+
+        // 通知外部系统（WaveManager 等）有敌人死亡
+        OnAnyEnemyDied?.Invoke();
 
         // 立即禁用 AI，防止 Destroy 延迟导致的同帧"幽灵攻击"
         ZombieAI ai = GetComponent<ZombieAI>();

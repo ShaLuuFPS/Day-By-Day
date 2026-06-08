@@ -21,6 +21,7 @@ public class EnemySpawner : MonoBehaviour, IResettable
     public Transform playerTransform;
 
     [Header("生成控制")]
+    public bool autoSpawn = true;
     public float spawnInterval = 3.0f;
     public int maxZombies = 15;
 
@@ -45,6 +46,7 @@ public class EnemySpawner : MonoBehaviour, IResettable
 
     void Update()
     {
+        if (!autoSpawn) return;
         if (playerTransform == null || zombiePrefab == null) return;
 
         int currentZombieCount = Object.FindObjectsByType<ZombieAI>().Length;
@@ -54,7 +56,7 @@ public class EnemySpawner : MonoBehaviour, IResettable
             timer += Time.deltaTime;
             if (timer >= spawnInterval)
             {
-                SpawnZombie();
+                SpawnOneEnemy();
                 timer = 0f;
             }
         }
@@ -65,7 +67,7 @@ public class EnemySpawner : MonoBehaviour, IResettable
         timer = 0f;
     }
 
-    void SpawnZombie()
+    public void SpawnOneEnemy()
     {
         Vector2 randomCirclePoint = UnityEngine.Random.insideUnitCircle.normalized;
         float randomDistance = UnityEngine.Random.Range(minRadius, maxRadius);

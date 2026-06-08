@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f8a7d2c1b9e4f6a8d0c5e2a7f1b3d9c, type: 3}
+  m_Name: TestWaveConfig
+  m_EditorClassIdentifier: Assembly-CSharp::WaveConfig
+  waves:
+  - totalEnemyCount: 3
+    maxAliveCount: 3
+    spawnInterval: 2
+    spawnEntries:
+    - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
+      weight: 10
+      overridePrefab: {fileID: 0}
+  - totalEnemyCount: 5
+    maxAliveCount: 4
+    spawnInterval: 1.5
+    spawnEntries:
+    - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
+      weight: 7
+      overridePrefab: {fileID: 0}
+    - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
+      weight: 3
+      overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+  - totalEnemyCount: 8
+    maxAliveCount: 5
+    spawnInterval: 1
+    spawnEntries:
+    - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
+      weight: 5
+      overridePrefab: {fileID: 0}
+    - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
+      weight: 3
+      overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+    - zombieData: {fileID: 11400000, guid: b7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d3, type: 2}
+      weight: 2
+      overridePrefab: {fileID: 9068081391238404700, guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8, type: 3}
+  waveRestInterval: 3
+  initialDelay: 2

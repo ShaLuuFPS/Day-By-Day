@@ -141,7 +141,8 @@ public class ZombieAI : MonoBehaviour
             if (zombieData != null && zombieData.chargeSpeed > 0f && currentDistance <= zombieData.chargeRange)
                 effectiveSpeed = zombieData.chargeSpeed;
 
-            float speedMultiplier = _isWarning ? 0.2f : 1f;
+            // 自爆僵尸预警期间不减速，否则陷入追-慢-跑的循环
+            float speedMultiplier = (_isWarning && !_suicideBomber) ? 0.2f : 1f;
             Vector3 targetVelocity = directionToPlayer.normalized * effectiveSpeed * speedMultiplier;
             targetVelocity.y = rb.linearVelocity.y;
             rb.linearVelocity = targetVelocity;
