@@ -35,7 +35,7 @@ MonoBehaviour:
   explosionEffectPrefab: {fileID: 0}
   showAttackWarning: 1
   attackWarningDuration: 0.3
-  attackWarningPrefab: {fileID: 0}
+  attackWarningPrefab: {fileID: 1136952117270004814, guid: 69655ec74ac18964c9d8bcb916bc71fb, type: 3}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 0.149
   xpReward: 10

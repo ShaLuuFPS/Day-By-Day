@@ -155,7 +155,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
   zombieData: {fileID: 11400000, guid: d744873b7d23e044fa93e4335c1fd5f9, type: 2}
-  xpOrbPrefab: {fileID: 0}
+  xpOrbPrefab: {fileID: 3673301007183059975, guid: 0c8318567124f6440aeb6f00480b82a4, type: 3}
 --- !u!114 &5202394822343815080
 MonoBehaviour:
   m_ObjectHideFlags: 0

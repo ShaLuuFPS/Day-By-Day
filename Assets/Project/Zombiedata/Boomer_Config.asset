@@ -30,12 +30,12 @@ MonoBehaviour:
   warningRadius: 10
   suicideBomber: 1
   explodeOnDeath: 1
-  explosionRadius: 5
+  explosionRadius: 4
   explosionDamage: 30
-  explosionEffectPrefab: {fileID: 726784960765694414, guid: 5383f577c49331a498cf0d847f215d39, type: 3}
+  explosionEffectPrefab: {fileID: 2299604252566273639, guid: fb4bae8cd7396d5489f168a3d7df90d8, type: 3}
   showAttackWarning: 0
   attackWarningDuration: 0.05
-  attackWarningPrefab: {fileID: 0}
+  attackWarningPrefab: {fileID: 1136952117270004814, guid: 69655ec74ac18964c9d8bcb916bc71fb, type: 3}
   dropPrefab: {fileID: 1415044948003068170, guid: bc990bfd9c3688843af155466b528040, type: 3}
   dropProbability: 0
   xpReward: 20
