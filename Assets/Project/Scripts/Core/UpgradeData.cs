@@ -10,7 +10,8 @@ public enum UpgradeType
     CorpseExplosion,     // 尸体爆炸
     SlowBullet,          // 减速弹
     EMPChain,            // 电磁弹
-    KillRestoreStamina   // 击杀回耐
+    KillRestoreStamina,  // 击杀回耐
+    Lifesteal            // 吸血：造成伤害的 3% 回复生命
 }
 
 /// <summary>

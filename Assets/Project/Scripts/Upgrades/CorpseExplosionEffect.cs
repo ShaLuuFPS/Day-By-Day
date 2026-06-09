@@ -2,14 +2,22 @@ using UnityEngine;
 
 /// <summary>
 /// 尸体爆炸 —— 仅玩家直接击杀的敌人触发爆炸，爆炸波及的敌人只死亡不连环爆
+/// 特效预制体由 UpgradeManager.corpseExplosionPrefab 指定，可在 Inspector 自由替换颜色/模型
 /// </summary>
 public class CorpseExplosionEffect : IUpgradeEffect
 {
     private const float ExplosionRadius = 3f;
     private const float ExplosionDamage = 20f;
 
+    private readonly GameObject explosionPrefab;
+
     /// <summary>防递归：正在处理爆炸时忽略新死亡事件，防止连环爆炸</summary>
     private bool isExploding = false;
+
+    public CorpseExplosionEffect(GameObject prefab)
+    {
+        explosionPrefab = prefab;
+    }
 
     public void OnApply()
     {
@@ -18,9 +26,7 @@ public class CorpseExplosionEffect : IUpgradeEffect
 
     public void OnEnemyKilled(EnemyHealth enemy)
     {
-        // 防连环爆炸：AOE 炸死的敌人不触发新爆炸
         if (isExploding) return;
-
         isExploding = true;
         DoExplosion(enemy.transform.position, enemy);
         isExploding = false;
@@ -30,7 +36,6 @@ public class CorpseExplosionEffect : IUpgradeEffect
     {
         SpawnExplosionVFX(pos);
 
-        // 伤害周围敌人（不伤玩家、不伤自己）
         Collider[] hits = Physics.OverlapSphere(pos, ExplosionRadius);
         foreach (var h in hits)
         {
@@ -44,22 +49,16 @@ public class CorpseExplosionEffect : IUpgradeEffect
 
     void SpawnExplosionVFX(Vector3 pos)
     {
-        // 简单半透明球体（URP 透明材质）
-        GameObject vfx = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        vfx.transform.position = pos;
-        vfx.transform.localScale = Vector3.one * ExplosionRadius * 2f;
-        Object.Destroy(vfx.GetComponent<Collider>());
-
-        Renderer r = vfx.GetComponent<Renderer>();
-        if (r != null)
+        if (explosionPrefab == null)
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader == null) shader = Shader.Find("Sprites/Default");
-            Material mat = new Material(shader);
-            mat.color = new Color(1f, 0.3f, 0f, 0.3f);
-            r.material = mat;
+            Debug.LogWarning("[尸体爆炸] 未设置爆炸预制体，跳过特效");
+            return;
         }
+
+        GameObject vfx = Object.Instantiate(explosionPrefab, pos, Quaternion.identity);
+        // 按爆炸半径缩放预制体（假设预制体基础尺寸为直径 1m 即半径 0.5m）
+        float prefabRadius = 0.5f;
+        vfx.transform.localScale = Vector3.one * (ExplosionRadius / prefabRadius);
         Object.Destroy(vfx, 0.5f);
     }
 

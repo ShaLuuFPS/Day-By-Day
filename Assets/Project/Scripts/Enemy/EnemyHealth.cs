@@ -195,8 +195,10 @@ public class EnemyHealth : MonoBehaviour
     {
         if (zombieData == null || zombieData.xpReward <= 0f) return;
 
-        // 粗略初始位置（XPOrb.Start() 会射线找地面精确定位）
+        // 随机散射偏移（±0.8m），避免经验球与弹药箱/其他掉落物重叠
         Vector3 spawnPos = transform.position;
+        spawnPos.x += UnityEngine.Random.Range(-0.8f, 0.8f);
+        spawnPos.z += UnityEngine.Random.Range(-0.8f, 0.8f);
 
         GameObject orb;
         if (xpOrbPrefab != null)
@@ -205,15 +207,10 @@ public class EnemyHealth : MonoBehaviour
         }
         else
         {
-            // 代码兜底：绿色半透明球体（缩放由 XPOrb.Start 按 XP 量设置）
+            Debug.LogWarning("[EnemyHealth] 未设置 xpOrbPrefab，使用默认球体兜底。建议在 Inspector 拖入 XP orb 预制体。");
             orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             orb.transform.position = spawnPos;
             Destroy(orb.GetComponent<Collider>());
-
-            Renderer r = orb.GetComponent<Renderer>();
-            Material mat = new Material(Shader.Find("Standard"));
-            mat.color = new Color(0, 1, 0, 0.7f);
-            r.material = mat;
         }
 
         XPOrb xpOrb = orb.GetComponent<XPOrb>();

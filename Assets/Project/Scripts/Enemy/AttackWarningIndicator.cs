@@ -27,6 +27,8 @@ public class AttackWarningIndicator : MonoBehaviour
         if (prefab != null)
         {
             indicator = Instantiate(prefab, worldPos, Quaternion.identity);
+            // 按攻击范围设置缩放（Cylinder 默认半径 0.5，直径 = radius * 2 / 0.5 = radius * 4）
+            indicator.transform.localScale = new Vector3(radius * 2f, 0.01f, radius * 2f);
             AttackWarningIndicator comp = indicator.GetComponent<AttackWarningIndicator>();
             if (comp != null)
                 comp.Init(radius, duration);
@@ -43,19 +45,16 @@ public class AttackWarningIndicator : MonoBehaviour
 
     /// <summary>
     /// 代码兜底：创建压扁的 Cylinder 作为地面圆盘。
+    /// 材质走默认 Unity 材质（建议在 ZombieData 中设置 attackWarningPrefab 替代此兜底）。
     /// </summary>
     static GameObject CreateFallback(Vector3 worldPos, float radius, float duration)
     {
         GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         disc.name = "AttackWarning_Disc";
 
-        // 置于地面（Cylinder 默认高度 2，中心在原点 → 下移 1 单位贴地）
         disc.transform.position = worldPos;
-
-        // 压扁成圆盘：XZ = 直径, Y = 极薄
         disc.transform.localScale = new Vector3(radius * 2f, 0.02f, radius * 2f);
 
-        // 纯视觉，立即禁用碰撞体再延迟销毁（防止同帧阻挡）
         Collider col = disc.GetComponent<Collider>();
         if (col != null)
         {
@@ -63,27 +62,7 @@ public class AttackWarningIndicator : MonoBehaviour
             Destroy(col);
         }
 
-        // ---- 材质：半透明红色 ----
-        // 优先 URP Unlit，回退到内置 Unlit/Color
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null) shader = Shader.Find("Unlit/Color");
-
-        Material mat = new Material(shader);
-        mat.color = new Color(1f, 0.15f, 0.05f, 0.4f);
-
-        // 尝试启用透明度（URP 路径）
-        if (shader.name.Contains("Universal"))
-        {
-            mat.SetFloat("_Surface", 1f);                      // Transparent
-            mat.SetFloat("_Blend", 0f);                        // Alpha
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.renderQueue = 3000;
-        }
-
-        disc.GetComponent<Renderer>().material = mat;
+        Debug.LogWarning("[AttackWarningIndicator] 使用代码兜底 Cylinder（默认材质），建议在 ZombieData 中设置 attackWarningPrefab。");
 
         AttackWarningIndicator comp = disc.AddComponent<AttackWarningIndicator>();
         comp.Init(radius, duration);

@@ -51,7 +51,7 @@ public class PlayerStamina : MonoBehaviour, IResettable
         if (config == null) return;
 
         // 升级面板打开时冻结输入
-        if (LevelUpManager.IsPaused) return;
+        if (GameStateManager.IsPaused) return;
 
         // ── Shift 触发 Dash ──
         if (Keyboard.current != null && Keyboard.current.shiftKey.wasPressedThisFrame)

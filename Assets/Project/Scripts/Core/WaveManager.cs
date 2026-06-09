@@ -112,6 +112,7 @@ public class WaveManager : MonoBehaviour, IResettable
         {
             state = WaveState.AllComplete;
             Debug.Log("[WaveManager] 🎉 所有波次完成！");
+            GameStateManager.OnAllWavesComplete?.Invoke();
 
             // 恢复 spawner 原始配置
             RestoreSpawnerEntries();
@@ -174,6 +175,7 @@ public class WaveManager : MonoBehaviour, IResettable
         {
             state = WaveState.AllComplete;
             Debug.Log("[WaveManager] 🎉 所有波次完成！恭喜！");
+            GameStateManager.OnAllWavesComplete?.Invoke();
             RestoreSpawnerEntries();
             return;
         }

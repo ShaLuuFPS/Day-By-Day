@@ -23,7 +23,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
         // 升级面板打开时冻结输入
-        if (LevelUpManager.IsPaused)
+        if (GameStateManager.IsPaused)
         {
             return;
         }

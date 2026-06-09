@@ -23,6 +23,15 @@ public class UpgradeManager : MonoBehaviour, IResettable
     /// <summary>电磁弹：命中时是否连锁伤害</summary>
     public static bool EMPEnabled { get; set; } = false;
 
+    /// <summary>玩家造成伤害时触发（参数：伤害值）</summary>
+    public static System.Action<float> OnPlayerDamageDealt;
+
+    // ── 特效预制体引用 ──
+
+    [Header("尸体爆炸特效")]
+    [Tooltip("尸体爆炸的预制体（绿色半透明球，可替换颜色）")]
+    public GameObject corpseExplosionPrefab;
+
     // ── 实例 ──
 
     private List<IUpgradeEffect> activeEffects = new List<IUpgradeEffect>();
@@ -61,10 +70,11 @@ public class UpgradeManager : MonoBehaviour, IResettable
         {
             case UpgradeType.PiercingRounds:      return new PiercingRoundsEffect();
             case UpgradeType.SplitProjectile:     return new SplitProjectileEffect();
-            case UpgradeType.CorpseExplosion:     return new CorpseExplosionEffect();
+            case UpgradeType.CorpseExplosion:     return new CorpseExplosionEffect(corpseExplosionPrefab);
             case UpgradeType.SlowBullet:          return new SlowBulletEffect();
             case UpgradeType.EMPChain:            return new EMPChainEffect();
             case UpgradeType.KillRestoreStamina:  return new KillRestoreStaminaEffect(GetComponent<PlayerStamina>());
+            case UpgradeType.Lifesteal:           return new LifestealEffect();
             default: return null;
         }
     }
@@ -73,6 +83,7 @@ public class UpgradeManager : MonoBehaviour, IResettable
 
     void OnBulletHitEnemy(Bullet bullet, EnemyHealth enemy)
     {
+        OnPlayerDamageDealt?.Invoke(bullet.Damage);
         foreach (var e in activeEffects)
             e.OnBulletHit(bullet, enemy);
     }
@@ -94,6 +105,7 @@ public class UpgradeManager : MonoBehaviour, IResettable
         SlowEnabled = false;
         EMPEnabled = false;
 
+        OnPlayerDamageDealt = null;
         Debug.Log("[UpgradeManager] 🔄 升级系统已重置");
     }
 }

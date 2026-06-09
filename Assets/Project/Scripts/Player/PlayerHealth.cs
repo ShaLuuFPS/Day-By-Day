@@ -67,6 +67,14 @@ public class PlayerHealth : MonoBehaviour, IResettable
         }
     }
 
+    /// <summary>回复指定血量（吸血升级等使用）</summary>
+    public void Heal(float amount)
+    {
+        if (currentHealth <= 0 || IsDead) return;
+        currentHealth = Mathf.Clamp(currentHealth + amount, 0f, maxHealth);
+        UpdateHealthBar();
+    }
+
     void UpdateHealthBar()
     {
         if (healthBarFill == null) return;
@@ -76,13 +84,22 @@ public class PlayerHealth : MonoBehaviour, IResettable
     void PlayerDie()
     {
         IsDead = true;
-        if (gameOverPanel != null)
+
+        // 优先使用 GameStateManager 的动态 UI，fallback 到旧版面板引用
+        if (GameStateManager.OnPlayerDied != null)
+        {
+            GameStateManager.OnPlayerDied.Invoke();
+        }
+        else if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(true);
+            Time.timeScale = 0f;
+        }
+        else
+        {
+            Time.timeScale = 0f;
         }
 
-        // 死亡时时间静止
-        Time.timeScale = 0f;
         Debug.Log("玩家已阵亡！游戏定格。");
     }
 

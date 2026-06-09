@@ -27,6 +27,14 @@ public class PlayerShooting : MonoBehaviour, IResettable
     private bool interruptReload = false;
     private static HashSet<string> unlockedWeapons = new HashSet<string>();
 
+    /// <summary>切枪后需用户重新按下才开枪（防止按住左键切枪直接开火）</summary>
+    private bool requireFreshPress = false;
+
+    /// <summary>弹夹打空的时刻（用于 0.2s 冷却后允许左键换弹）</summary>
+    private float emptyClipSince = -999f;
+    private bool emptyPromptShown = false;
+    private const float EmptyReloadDelay = 0.5f; // 可调整
+
     // 事件广播
     public static event Action OnAmmoChanged;
     public static event Action<float> OnReloading;
@@ -118,8 +126,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void Update()
     {
-        // 升级面板打开时冻结输入
-        if (LevelUpManager.IsPaused) return;
+        // 升级面板/ESC暂停时冻结输入，同时强制中断持刀状态
+        if (GameStateManager.IsPaused)
+        {
+            if (meleeHolding)
+            {
+                meleeHolding = false;
+                if (meleeHitbox != null)
+                    meleeHitbox.HideRangeIndicator();
+            }
+            return;
+        }
 
         HandlePlayerInput();
 
@@ -165,9 +182,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
         activeSlotIndex = index;
 
-        // 重置近战连击
+        // 切枪后需要用户真正按下才开火（防止按住左键切枪直接开火）
+        requireFreshPress = true;
+        emptyPromptShown = false;
+        emptyClipSince = -999f;
+
+        // 重置近战连击 + 隐藏范围指示器
         meleeComboStage = 0;
         meleeComboTimer = 0f;
+        meleeHolding = false;
+        if (meleeHitbox != null)
+            meleeHitbox.HideRangeIndicator();
 
         OnAmmoChanged?.Invoke();
     }
@@ -208,7 +233,17 @@ public class PlayerShooting : MonoBehaviour, IResettable
         // 处理枪械射击输入
         if (currentGunData != null)
         {
-            if (currentGunData.isAutomatic)
+            // 切枪后的首枪必须用新按下触发（防止按住左键切枪直接开火）
+            if (requireFreshPress)
+            {
+                if (Mouse.current.leftButton.wasPressedThisFrame && Time.time >= nextFireTime)
+                {
+                    ExecuteGunShoot();
+                    nextFireTime = Time.time + currentGunData.fireRate;
+                    requireFreshPress = false;
+                }
+            }
+            else if (currentGunData.isAutomatic)
             {
                 if (Mouse.current.leftButton.isPressed && Time.time >= nextFireTime)
                 {
@@ -224,6 +259,32 @@ public class PlayerShooting : MonoBehaviour, IResettable
                     nextFireTime = Time.time + currentGunData.fireRate;
                 }
             }
+        }
+
+        // ── 空弹夹：立即出提示 + 开始计时，0.2s 后按/按住左键触发换弹 ──
+        bool clipEmpty = activeSlot != null && activeSlot.currentAmmo <= 0 && activeSlot.reserveAmmo > 0;
+
+        if (currentGunData != null && clipEmpty)
+        {
+            // 第一次进入空弹状态 → 显示提示 + 记录时间
+            if (!emptyPromptShown)
+            {
+                emptyClipSince   = Time.time;
+                emptyPromptShown = true;
+                OnEmptyClipFired?.Invoke(); // 显示"按R/左键换弹"
+            }
+
+            // 已过冷却 + 用户按下/按住左键 → 换弹
+            bool cooledDown = (Time.time - emptyClipSince) >= EmptyReloadDelay;
+            if (cooledDown && Mouse.current.leftButton.isPressed && !isReloading)
+            {
+                StartCoroutine(ReloadRoutine());
+                emptyPromptShown = false;
+            }
+        }
+        else
+        {
+            emptyPromptShown = false;
         }
 
         // 处理换弹输入（近战没有换弹）
@@ -277,9 +338,12 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void HandleMeleeInput()
     {
-        // 按住左键：显示当前连击段的范围预览
+        // 按住左键：显示当前连击段的范围预览（遵循攻速冷却）
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
+            // 冷却中不允许再次显示范围
+            if (Time.time < meleeNextAttackTime) return;
+
             meleeHolding = true;
             ShowMeleeRange();
         }
@@ -291,10 +355,12 @@ public class PlayerShooting : MonoBehaviour, IResettable
                 meleeHitbox.KeepShowingRange();
         }
 
-        // 松开左键：执行攻击
+        // 松开左键：先隐藏范围预览，再尝试攻击
         if (!Mouse.current.leftButton.isPressed && meleeHolding)
         {
             meleeHolding = false;
+            if (meleeHitbox != null)
+                meleeHitbox.HideRangeIndicator();
             ExecuteMelee();
         }
     }

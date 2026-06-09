@@ -14,6 +14,7 @@ public class PlayerInteraction : MonoBehaviour
 
     // 缓存玩家身上的射击组件，用于传参
     private PlayerShooting playerShooting;
+    private MeleeHitbox meleeHitbox;
 
     // 🌟 核心通用交互事件：改由雷达脚本来向 UI Manager 发送通知
     public static event Action<string> OnShowInteractionUI;
@@ -22,6 +23,7 @@ public class PlayerInteraction : MonoBehaviour
     void Awake()
     {
         playerShooting = GetComponent<PlayerShooting>();
+        meleeHitbox = GetComponentInChildren<MeleeHitbox>();
     }
 
     void Update()
@@ -104,6 +106,10 @@ public class PlayerInteraction : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // 🔒 防止近战 Hitbox 的大触发球误将武器加入雷达
+        if (meleeHitbox != null && meleeHitbox.IsTriggerActive())
+            return;
+
         IInteractable interactable = other.GetComponent<IInteractable>();
         if (interactable != null)
         {

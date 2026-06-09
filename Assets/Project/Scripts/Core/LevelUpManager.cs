@@ -24,8 +24,9 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
     private List<UpgradeData> chosenUpgrades = new List<UpgradeData>();
 
-    /// <summary>升级面板打开时为 true，PlayerMovement / PlayerShooting 读取此值冻结输入</summary>
-    public static bool IsPaused { get; private set; } = false;
+    /// <summary>已废弃，改用 GameStateManager.IsUpgradePaused</summary>
+    [System.Obsolete("Use GameStateManager.IsUpgradePaused instead")]
+    public static bool IsPaused => GameStateManager.IsUpgradePaused;
 
     /// <summary>玩家选择升级后触发</summary>
     public static event System.Action<UpgradeData> OnUpgradeChosen;
@@ -66,7 +67,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
         // 暂停游戏 + 冻结玩家输入
         Time.timeScale = 0f;
-        IsPaused = true;
+        GameStateManager.IsUpgradePaused = true;
         ShowChoices();
     }
 
@@ -119,7 +120,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
         if (levelUpPanel != null)
             levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
-        IsPaused = false;
+        GameStateManager.IsUpgradePaused = false;
     }
 
     UpgradeData[] PickRandomUpgrades(int count)
@@ -193,7 +194,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.fontSize = 36;
         titleText.color = Color.white;
-        titleText.font = GetDefaultFont();
+        titleText.font = FontHelper.GetFont();
 
         // 3 个选择按钮（竖排）
         choiceButtons = new Button[3];
@@ -230,28 +231,14 @@ public class LevelUpManager : MonoBehaviour, IResettable
             choiceLabels[i].alignment = TextAlignmentOptions.Center;
             choiceLabels[i].fontSize = 20;
             choiceLabels[i].color = Color.white;
-            choiceLabels[i].font = GetDefaultFont();
+            choiceLabels[i].font = FontHelper.GetFont();
         }
-    }
-
-    TMP_FontAsset GetDefaultFont()
-    {
-        // 优先查找中文字体（MSYH / 微软雅黑），否则 LiberationSans 不支持 CJK 会显示方块
-        var allFonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-        foreach (var f in allFonts)
-        {
-            if (f.name.Contains("MSYH") || f.name.Contains("YaHei") || f.name.Contains("Microsoft"))
-                return f;
-        }
-
-        // Fallback: 复用场景中已有的 TMP 字体
-        TextMeshProUGUI existing = Object.FindAnyObjectByType<TextMeshProUGUI>();
-        return existing != null ? existing.font : null;
     }
 
     public void ResetData()
     {
         chosenUpgrades.Clear();
+        GameStateManager.IsUpgradePaused = false;
         if (levelUpPanel != null)
             levelUpPanel.SetActive(false);
         Time.timeScale = 1f;

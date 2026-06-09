@@ -8,7 +8,8 @@ public class WeaponUIManager : MonoBehaviour
     public PlayerShooting playerWeapon;
 
     [Header("🎨 UI 独立模块连线")]
-    public TextMeshProUGUI reloadStatusText;
+    public TextMeshProUGUI reloadActionText;  // "按R换弹"
+    public TextMeshProUGUI reloadStatusText;  // "正在换弹..."
     public Slider reloadSlider;
 
     [Header("🎮 双武器 UI — 每槽: 弹药行(左对齐) + 武器名(居中)")]
@@ -80,10 +81,13 @@ public class WeaponUIManager : MonoBehaviour
         RefreshSlot(slot0AmmoText, slot0NameText, 0);
         RefreshSlot(slot1AmmoText, slot1NameText, 1);
 
-        // ── 清除空弹警告（有弹药时） ──
-        if (playerWeapon.hasWeapon && playerWeapon.currentAmmo > 0 && !playerWeapon.isReloading)
+        // ── 清除空弹警告（有弹药时 / 切到近战时） ──
+        bool isMelee = playerWeapon.hasWeapon && playerWeapon.currentWeaponData?.weaponType == WeaponType.Melee;
+        if (isMelee || (playerWeapon.currentAmmo > 0 && !playerWeapon.isReloading))
         {
+            if (reloadActionText != null) reloadActionText.text = "";
             if (reloadStatusText != null) reloadStatusText.text = "";
+            if (reloadSlider != null) reloadSlider.gameObject.SetActive(false);
         }
     }
 
@@ -199,6 +203,6 @@ public class WeaponUIManager : MonoBehaviour
         }
     }
     void HandleReloadingUI(float elapsed) { if (playerWeapon == null) return; if (reloadSlider != null) { if (!reloadSlider.gameObject.activeSelf) reloadSlider.gameObject.SetActive(true); reloadSlider.value = elapsed / playerWeapon.reloadTime; } if (reloadStatusText != null) { float remaining = playerWeapon.reloadTime - elapsed; reloadStatusText.text = $"正在换弹... ({remaining.ToString("F1")}s)"; } }
-    void HideReloadUI() { if (reloadSlider != null) reloadSlider.gameObject.SetActive(false); if (reloadStatusText != null) { reloadStatusText.text = ""; } }
-    void ShowEmptyWarning() { if (reloadStatusText != null) reloadStatusText.text = "没子弹了，请按 R 换弹！"; }
+    void HideReloadUI() { if (reloadSlider != null) reloadSlider.gameObject.SetActive(false); if (reloadActionText != null) reloadActionText.text = ""; if (reloadStatusText != null) reloadStatusText.text = ""; }
+    void ShowEmptyWarning() { if (reloadActionText != null) reloadActionText.text = "按R/左键换弹"; }
 }

@@ -77,6 +77,19 @@ public class MeleeHitbox : MonoBehaviour
     }
 
     /// <summary>
+    /// 立即隐藏范围指示器（切枪/取消持刀时调用）
+    /// </summary>
+    public void HideRangeIndicator()
+    {
+        fanShowTimer = 0f;
+        if (fanVisual != null)
+            fanVisual.SetActive(false);
+    }
+
+    /// <summary>碰撞球是否处于激活状态（供 PlayerInteraction 过滤用）</summary>
+    public bool IsTriggerActive() => sphereCollider != null && sphereCollider.enabled;
+
+    /// <summary>
     /// 按住期间每帧刷新范围朝向（跟随玩家旋转）
     /// </summary>
     public void KeepShowingRange()
@@ -129,6 +142,7 @@ public class MeleeHitbox : MonoBehaviour
 
         hitTargets.Add(enemy);
         enemy.TakeDamage(damage);
+        UpgradeManager.OnPlayerDamageDealt?.Invoke(damage);
 
         Rigidbody rb = enemy.GetComponent<Rigidbody>();
         if (rb != null && knockback > 0f)
@@ -166,15 +180,8 @@ public class MeleeHitbox : MonoBehaviour
         }
         else
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-            if (shader == null) shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Sprites/Default");
-            fanMaterial = new Material(shader);
-            fanMaterial.color = new Color(1f, 0.5f, 0f, 0.25f);
-            fanMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            fanMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            fanMaterial.SetInt("_ZWrite", 0);
-            fanMaterial.renderQueue = 3000;
+            Debug.LogWarning("[MeleeHitbox] 未设置 fanMaterialOverride，扇形面片不会显示。请在 Inspector 拖入 URP 半透明材质。");
+            return;
         }
         fanMeshRenderer.material = fanMaterial;
 

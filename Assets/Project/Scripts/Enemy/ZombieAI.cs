@@ -157,7 +157,11 @@ public class ZombieAI : MonoBehaviour
         {
             float effectiveSpeed = _moveSpeed;
             if (zombieData != null && zombieData.chargeSpeed > 0f && currentDistance <= zombieData.chargeRange)
-                effectiveSpeed = zombieData.chargeSpeed;
+            {
+                // 减速比 = 当前移速 / 原始移速，冲刺速度也等比缩放
+                float slowRatio = (OriginalMoveSpeed > 0.01f) ? _moveSpeed / OriginalMoveSpeed : 1f;
+                effectiveSpeed = zombieData.chargeSpeed * slowRatio;
+            }
 
             // 自爆僵尸预警期间不减速，否则陷入追-慢-跑的循环
             float speedMultiplier = (_isWarning && !_suicideBomber) ? 0.2f : 1f;
