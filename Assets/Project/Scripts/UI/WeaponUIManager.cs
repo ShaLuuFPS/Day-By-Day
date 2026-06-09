@@ -8,24 +8,21 @@ public class WeaponUIManager : MonoBehaviour
     public PlayerShooting playerWeapon;
 
     [Header("🎨 UI 独立模块连线")]
-    public TextMeshProUGUI reloadActionText;  // "按R换弹"
+    public TextMeshProUGUI reloadActionText;  // "按R/左键换弹"
     public TextMeshProUGUI reloadStatusText;  // "正在换弹..."
     public Slider reloadSlider;
 
-    [Header("🎮 双武器 UI — 每槽: 弹药行(左对齐) + 武器名(居中)")]
+    [Header("🎮 双武器 UI — 每槽: 弹药行(左) + 武器名(右)")]
     public TextMeshProUGUI slot0AmmoText;
     public TextMeshProUGUI slot0NameText;
     public TextMeshProUGUI slot1AmmoText;
     public TextMeshProUGUI slot1NameText;
+    public RectTransform slot0Container;
+    public RectTransform slot1Container;
 
-    [Header("🎯 主手左突偏移")]
-    [Tooltip("主手武器向左突出多少像素（负值=更左）")]
-    public float activeSlotLeftShift = -50f;
-
-    // 记录每个文本框在 Editor 中的初始位置（非主手状态的位置）
-    private Vector2 slot0AmmoBase, slot0NameBase;
-    private Vector2 slot1AmmoBase, slot1NameBase;
-    private bool basesCaptured = false;
+    [Header("🎯 主手突出偏移")]
+    [Tooltip("主手武器向左突出（负值=更左）")]
+    public float activeSlotLeftShift = -30f;
 
     [Header("🌟 交互提示UI模块")]
     public GameObject interactionPanel;
@@ -77,9 +74,12 @@ public class WeaponUIManager : MonoBehaviour
     {
         if (playerWeapon == null) return;
 
-        // ── 双槽 UI：弹药行 + 武器名 ──
+        // ── 双槽 UI ──
         RefreshSlot(slot0AmmoText, slot0NameText, 0);
         RefreshSlot(slot1AmmoText, slot1NameText, 1);
+
+        // ── 主手突进：活跃槽左移，非活跃槽复位 ──
+        ApplySlotShift();
 
         // ── 清除空弹警告（有弹药时 / 切到近战时） ──
         bool isMelee = playerWeapon.hasWeapon && playerWeapon.currentWeaponData?.weaponType == WeaponType.Melee;
@@ -91,15 +91,31 @@ public class WeaponUIManager : MonoBehaviour
         }
     }
 
+    void ApplySlotShift()
+    {
+        int activeIdx = playerWeapon.activeSlotIndex;
+        float shift = activeSlotLeftShift;
+
+        if (slot0Container != null)
+        {
+            slot0Container.anchoredPosition = new Vector2(
+                (activeIdx == 0) ? shift : 0f,
+                0f);
+        }
+        if (slot1Container != null)
+        {
+            slot1Container.anchoredPosition = new Vector2(
+                (activeIdx == 1) ? shift : 0f,
+                -52f);
+        }
+    }
+
     // ─── 颜色层级 ───
     static readonly Color Gray1 = new Color(0.914f, 0.914f, 0.914f);  // #E9E9E9  接近白
     static readonly Color Gray2 = new Color(0.816f, 0.816f, 0.816f);  // #D0D0D0  比灰1深一档
 
     void RefreshSlot(TextMeshProUGUI ammoText, TextMeshProUGUI nameText, int slotIndex)
     {
-        // 首次调用时抓取 Editor 中设置的初始位置（非主手基准位置）
-        if (!basesCaptured) CaptureBasePositions();
-
         WeaponSlot slot = (playerWeapon.slots != null && slotIndex < playerWeapon.slots.Length)
             ? playerWeapon.slots[slotIndex] : null;
 
@@ -109,7 +125,6 @@ public class WeaponUIManager : MonoBehaviour
         {
             if (ammoText != null) { ammoText.text = "-"; ammoText.color = Gray2; }
             if (nameText != null) { nameText.text = "空";  nameText.color = Gray2; }
-            ApplySlotShift(ammoText, nameText, slotIndex, false);
             return;
         }
 
@@ -135,8 +150,6 @@ public class WeaponUIManager : MonoBehaviour
                     nameText.text = $"<size=28>{weaponName}</size>";
                 }
             }
-
-            ApplySlotShift(ammoText, nameText, slotIndex, isActive);
             return;
         }
 
@@ -169,40 +182,32 @@ public class WeaponUIManager : MonoBehaviour
                 nameText.text = $"<size=28>{weaponName}</size>";
             }
         }
-
-        // ── 位置偏移：主手左突 ──
-        ApplySlotShift(ammoText, nameText, slotIndex, isActive);
     }
 
-    void CaptureBasePositions()
+    void HandleReloadingUI(float elapsed)
     {
-        basesCaptured = true;
-        if (slot0AmmoText != null) slot0AmmoBase = slot0AmmoText.rectTransform.anchoredPosition;
-        if (slot0NameText != null) slot0NameBase = slot0NameText.rectTransform.anchoredPosition;
-        if (slot1AmmoText != null) slot1AmmoBase = slot1AmmoText.rectTransform.anchoredPosition;
-        if (slot1NameText != null) slot1NameBase = slot1NameText.rectTransform.anchoredPosition;
-    }
-
-    void ApplySlotShift(TextMeshProUGUI ammoText, TextMeshProUGUI nameText, int slotIndex, bool isActive)
-    {
-        Vector2 ammoBase = (slotIndex == 0) ? slot0AmmoBase : slot1AmmoBase;
-        Vector2 nameBase = (slotIndex == 0) ? slot0NameBase : slot1NameBase;
-        float shift = isActive ? activeSlotLeftShift : 0f;
-
-        if (ammoText != null)
+        if (playerWeapon == null) return;
+        if (reloadSlider != null)
         {
-            Vector2 p = ammoBase;
-            p.x += shift;
-            ammoText.rectTransform.anchoredPosition = p;
+            if (!reloadSlider.gameObject.activeSelf) reloadSlider.gameObject.SetActive(true);
+            reloadSlider.value = elapsed / playerWeapon.reloadTime;
         }
-        if (nameText != null)
+        if (reloadStatusText != null)
         {
-            Vector2 p = nameBase;
-            p.x += shift;
-            nameText.rectTransform.anchoredPosition = p;
+            float remaining = playerWeapon.reloadTime - elapsed;
+            reloadStatusText.text = $"正在换弹... ({remaining.ToString("F1")}s)";
         }
     }
-    void HandleReloadingUI(float elapsed) { if (playerWeapon == null) return; if (reloadSlider != null) { if (!reloadSlider.gameObject.activeSelf) reloadSlider.gameObject.SetActive(true); reloadSlider.value = elapsed / playerWeapon.reloadTime; } if (reloadStatusText != null) { float remaining = playerWeapon.reloadTime - elapsed; reloadStatusText.text = $"正在换弹... ({remaining.ToString("F1")}s)"; } }
-    void HideReloadUI() { if (reloadSlider != null) reloadSlider.gameObject.SetActive(false); if (reloadActionText != null) reloadActionText.text = ""; if (reloadStatusText != null) reloadStatusText.text = ""; }
-    void ShowEmptyWarning() { if (reloadActionText != null) reloadActionText.text = "按R/左键换弹"; }
+
+    void HideReloadUI()
+    {
+        if (reloadSlider != null) reloadSlider.gameObject.SetActive(false);
+        if (reloadActionText != null) reloadActionText.text = "";
+        if (reloadStatusText != null) reloadStatusText.text = "";
+    }
+
+    void ShowEmptyWarning()
+    {
+        if (reloadActionText != null) reloadActionText.text = "按R/左键换弹";
+    }
 }

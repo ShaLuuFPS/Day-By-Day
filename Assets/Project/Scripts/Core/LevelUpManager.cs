@@ -4,12 +4,13 @@ using TMPro;
 using System.Collections.Generic;
 
 /// <summary>
-/// 升级选择管理器 —— 经验达标时暂停游戏，弹出 3 选 1 面板
+/// 升级选择管理器 —— 经验达标时暂停游戏，弹出 3 选 1 面板。
+/// UI 使用锚点百分比 + VerticalLayoutGroup，配合 Canvas Scaler 自适应分辨率。
 /// </summary>
 public class LevelUpManager : MonoBehaviour, IResettable
 {
     [Header("升级池")]
-    [Tooltip("所有可用升级（Phase 4 实现具体效果）")]
+    [Tooltip("所有可用升级")]
     public UpgradeData[] upgradePool;
 
     [Header("配置")]
@@ -58,14 +59,12 @@ public class LevelUpManager : MonoBehaviour, IResettable
             return;
         }
 
-        // 检查是否所有升级都已选过
         if (chosenUpgrades.Count >= upgradePool.Length)
         {
             Debug.Log("[LevelUpManager] 所有升级已选完，跳过");
             return;
         }
 
-        // 暂停游戏 + 冻结玩家输入
         Time.timeScale = 0f;
         GameStateManager.IsUpgradePaused = true;
         ShowChoices();
@@ -75,16 +74,14 @@ public class LevelUpManager : MonoBehaviour, IResettable
     {
         if (levelUpPanel == null) return;
 
-        // 随机抽 N 个不重复升级
         UpgradeData[] choices = PickRandomUpgrades(choicesPerLevel);
         if (choices == null || choices.Length == 0) return;
 
-        // 填充按钮
         for (int i = 0; i < choiceButtons.Length && i < choices.Length; i++)
         {
             if (choiceButtons[i] != null)
             {
-                int index = i; // 闭包捕获
+                int index = i;
                 choiceButtons[i].onClick.RemoveAllListeners();
                 choiceButtons[i].onClick.AddListener(() => OnChoiceSelected(choices[index]));
                 choiceButtons[i].gameObject.SetActive(true);
@@ -96,7 +93,6 @@ public class LevelUpManager : MonoBehaviour, IResettable
             }
         }
 
-        // 隐藏多余的按钮
         for (int i = choices.Length; i < choiceButtons.Length; i++)
         {
             if (choiceButtons[i] != null)
@@ -112,11 +108,9 @@ public class LevelUpManager : MonoBehaviour, IResettable
     void OnChoiceSelected(UpgradeData selected)
     {
         Debug.Log($"[LevelUpManager] 玩家选择了: {selected.upgradeName} ({selected.upgradeType})");
-
         chosenUpgrades.Add(selected);
         OnUpgradeChosen?.Invoke(selected);
 
-        // 恢复游戏
         if (levelUpPanel != null)
             levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
@@ -127,7 +121,6 @@ public class LevelUpManager : MonoBehaviour, IResettable
     {
         if (upgradePool.Length == 0) return null;
 
-        // 过滤掉已选择过的升级（不重复出现）
         var available = new List<UpgradeData>();
         foreach (var u in upgradePool)
         {
@@ -143,7 +136,6 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
         int actualCount = Mathf.Min(count, available.Count);
 
-        // Fisher-Yates 部分洗牌
         for (int i = 0; i < actualCount; i++)
         {
             int randomIndex = Random.Range(i, available.Count);
@@ -182,33 +174,50 @@ public class LevelUpManager : MonoBehaviour, IResettable
         panelGo.GetComponent<Image>().color = new Color(0, 0, 0, 0.85f);
         levelUpPanel = panelGo;
 
-        // 标题
+        // 标题（锚点区域：面板上部居中）
         GameObject titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
         titleGo.transform.SetParent(panelGo.transform, false);
         RectTransform titleRect = titleGo.GetComponent<RectTransform>();
-        titleRect.anchorMin = new Vector2(0.5f, 0.5f);
-        titleRect.anchorMax = new Vector2(0.5f, 0.5f);
-        titleRect.anchoredPosition = new Vector2(0, 180);
-        titleRect.sizeDelta = new Vector2(400, 60);
+        titleRect.anchorMin = new Vector2(0.1f, 0.65f);
+        titleRect.anchorMax = new Vector2(0.9f, 0.78f);
+        titleRect.anchoredPosition = Vector2.zero;
+        titleRect.sizeDelta = Vector2.zero;
         titleText = titleGo.GetComponent<TextMeshProUGUI>();
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.fontSize = 36;
         titleText.color = Color.white;
         titleText.font = FontHelper.GetFont();
 
-        // 3 个选择按钮（竖排）
+        // 按钮容器（VerticalLayoutGroup 自动排列 3 个选项）
+        GameObject btnGroup = new GameObject("ButtonGroup", typeof(RectTransform),
+            typeof(VerticalLayoutGroup));
+        btnGroup.transform.SetParent(panelGo.transform, false);
+        RectTransform groupRect = btnGroup.GetComponent<RectTransform>();
+        groupRect.anchorMin = new Vector2(0.12f, 0.12f);
+        groupRect.anchorMax = new Vector2(0.88f, 0.62f);
+        groupRect.anchoredPosition = Vector2.zero;
+        groupRect.sizeDelta = Vector2.zero;
+
+        VerticalLayoutGroup vlg = btnGroup.GetComponent<VerticalLayoutGroup>();
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = false;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.spacing = 12;
+
         choiceButtons = new Button[3];
         choiceLabels = new TextMeshProUGUI[3];
 
         for (int i = 0; i < 3; i++)
         {
-            GameObject btnGo = new GameObject($"Choice_{i}", typeof(RectTransform), typeof(Image), typeof(Button));
-            btnGo.transform.SetParent(panelGo.transform, false);
-            RectTransform btnRect = btnGo.GetComponent<RectTransform>();
-            btnRect.anchorMin = new Vector2(0.5f, 0.5f);
-            btnRect.anchorMax = new Vector2(0.5f, 0.5f);
-            btnRect.anchoredPosition = new Vector2(0, 80 - i * 90);
-            btnRect.sizeDelta = new Vector2(350, 75);
+            GameObject btnGo = new GameObject($"Choice_{i}", typeof(RectTransform),
+                typeof(Image), typeof(Button), typeof(LayoutElement));
+            btnGo.transform.SetParent(btnGroup.transform, false);
+
+            LayoutElement le = btnGo.GetComponent<LayoutElement>();
+            le.minHeight = 60;
+            le.flexibleWidth = 1;
 
             var btnImg = btnGo.GetComponent<Image>();
             btnImg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
@@ -218,7 +227,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
             btnColors.highlightedColor = new Color(0.3f, 0.5f, 0.3f, 1f);
             choiceButtons[i].colors = btnColors;
 
-            // 文字标签
+            // 文字标签（撑满按钮）
             GameObject lblGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
             lblGo.transform.SetParent(btnGo.transform, false);
             RectTransform lblRect = lblGo.GetComponent<RectTransform>();
