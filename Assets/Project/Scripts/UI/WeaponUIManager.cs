@@ -24,6 +24,24 @@ public class WeaponUIManager : MonoBehaviour
     [Tooltip("主手武器向左突出（负值=更左）")]
     public float activeSlotLeftShift = -30f;
 
+    [Header("📐 布局偏移")]
+    [Tooltip("槽位 1 垂直偏移")]
+    public float slot1VerticalOffset = -52f;
+
+    [Header("🔤 字体大小")]
+    [Tooltip("主手武器名字号")]
+    public float activeNameFontSize = 36f;
+    [Tooltip("非主手武器名字号")]
+    public float inactiveNameFontSize = 28f;
+    [Tooltip("主手弹药主数字号（相对偏移）")]
+    public float activeAmmoMainFontSize = 6f;
+    [Tooltip("非主手弹药主数字号")]
+    public float inactiveAmmoMainFontSize = 24f;
+    [Tooltip("非主手弹药备弹字号")]
+    public float inactiveAmmoSubFontSize = 20f;
+    [Tooltip("连击指示器字号")]
+    public float comboFontSize = 24f;
+
     [Header("🌟 交互提示UI模块")]
     public GameObject interactionPanel;
     public TextMeshProUGUI interactionText;
@@ -106,7 +124,7 @@ public class WeaponUIManager : MonoBehaviour
         {
             slot1Container.anchoredPosition = new Vector2(
                 (activeIdx == 1) ? shift : 0f,
-                -52f);
+                slot1VerticalOffset);
         }
     }
 
@@ -141,13 +159,13 @@ public class WeaponUIManager : MonoBehaviour
                 {
                     nameText.color = Color.white;
                     int combo = playerWeapon.MeleeComboStage;
-                    string comboStr = combo > 0 ? $" <size=24><color=#E9E9E9>连{combo}</color></size>" : "";
-                    nameText.text = $"<size=36>{weaponName}{comboStr}</size>";
+                    string comboStr = combo > 0 ? $" <size={comboFontSize}><color=#E9E9E9>连{combo}</color></size>" : "";
+                    nameText.text = $"<size={activeNameFontSize}>{weaponName}{comboStr}</size>";
                 }
                 else
                 {
                     nameText.color = Gray1;
-                    nameText.text = $"<size=28>{weaponName}</size>";
+                    nameText.text = $"<size={inactiveNameFontSize}>{weaponName}</size>";
                 }
             }
             return;
@@ -159,27 +177,27 @@ public class WeaponUIManager : MonoBehaviour
             if (isActive)
             {
                 ammoText.color = Color.white;
-                ammoText.text = $"<size=+6>{slot.currentAmmo}</size>\n<color=#E9E9E9>  {slot.reserveAmmo}</color>";
+                ammoText.text = $"<size=+{activeAmmoMainFontSize}>{slot.currentAmmo}</size>\n<color=#E9E9E9>  {slot.reserveAmmo}</color>";
             }
             else
             {
                 ammoText.color = Gray1;
-                ammoText.text = $"<size=24>{slot.currentAmmo}</size>\n<size=20><color=#D0D0D0>  {slot.reserveAmmo}</color></size>";
+                ammoText.text = $"<size={inactiveAmmoMainFontSize}>{slot.currentAmmo}</size>\n<size={inactiveAmmoSubFontSize}><color=#D0D0D0>  {slot.reserveAmmo}</color></size>";
             }
         }
 
-        // ── 武器名：主手白36号，非主手灰1 28号 ──
+        // ── 武器名：主手白，非主手灰 ──
         if (nameText != null)
         {
             if (isActive)
             {
                 nameText.color = Color.white;
-                nameText.text = $"<size=36>{weaponName}</size>";
+                nameText.text = $"<size={activeNameFontSize}>{weaponName}</size>";
             }
             else
             {
                 nameText.color = Gray1;
-                nameText.text = $"<size=28>{weaponName}</size>";
+                nameText.text = $"<size={inactiveNameFontSize}>{weaponName}</size>";
             }
         }
     }

@@ -126,8 +126,8 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void Update()
     {
-        // 升级面板/ESC暂停时冻结输入，同时强制中断持刀状态
-        if (GameStateManager.IsPaused)
+        // 升级面板/ESC暂停/游戏结束时冻结输入，同时强制中断持刀状态
+        if (GameStateManager.IsPaused || GameStateManager.IsGameOver)
         {
             if (meleeHolding)
             {

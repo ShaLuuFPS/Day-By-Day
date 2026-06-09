@@ -52,18 +52,18 @@
 | 击杀回耐 | 击杀恢复 20% 体力 |
 | 吸血弹 | 伤害 3% 回血 |
 
-## 开发规范
+## 技术方案
 
-- 特效走预制体引用（`public GameObject xxxPrefab`），Inspector 拖入即换
-- 代码禁止 `Shader.Find` / `CreatePrimitive` 手搓材质
-- Unity 6 API：`FindAnyObjectByType` 替代 `FindFirstObjectByType`
-- 复用已有模块：`TimedDestroyer`、`DropHelper`、`FontHelper`、`DamageNumberManager`
+- **架构**：ScriptableObject 武器配置、IResettable 接口统一重置契约、静态事件解耦模块间通信
+- **渲染**：URP 管线 + Canvas Scaler 锚点自适应布局 + TextMeshPro 富文本
+- **输入**：Unity New Input System（键盘 + 鼠标）
+- **特效**：预制体引用拖入，禁止 `Shader.Find` / `CreatePrimitive` 手搓材质
 
-## GIF 录制清单
+## 录制清单
 
-> 打开项目 Play Mode 录制即可。
+> Play Mode 直接录制，标注 🖼 的项目截图即可。
 
-- [ ] **双武器切换** — 按 1/2 切枪，UI 高亮位移
+- [ ] 🖼 **双武器切换** — 按 1/2 切枪，UI 高亮位移
 - [ ] **近战连击** — 按住预览范围 → 松开攻击 → 连击
 - [ ] **Dash 冲刺** — Shift 位移 + 体力条消耗/回复
 - [ ] **武器拾取** — 走近按 E 拾取，同款自动补弹
@@ -77,6 +77,6 @@
 - [ ] **Boomer 自爆** — 预警圈 + 红色爆炸
 - [ ] **Boss 战** — 高血量 + 攻击预警
 - [ ] **波次推进** — 清场 → 下一波（共 4 波）
-- [ ] **ESC 暂停** — 暂停面板 继续/重新开始
-- [ ] **胜利面板** — 清完所有波次
-- [ ] **死亡重置** — 阵亡面板 → 重新开始
+- [ ] 🖼 **ESC 暂停** — 暂停面板，继续/重新开始
+- [ ] 🖼 **胜利面板** — 清完所有波次
+- [ ] 🖼 **死亡重置** — 阵亡面板 → 重新开始
