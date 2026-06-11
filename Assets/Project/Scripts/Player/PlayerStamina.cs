@@ -50,8 +50,8 @@ public class PlayerStamina : MonoBehaviour, IResettable
     {
         if (config == null) return;
 
-        // 升级面板打开时冻结输入
-        if (GameStateManager.IsPaused) return;
+        // 升级面板/暂停/游戏结束时冻结输入
+        if (GameStateManager.IsInputFrozen) return;
 
         // ── Shift 触发 Dash ──
         if (Keyboard.current != null && Keyboard.current.shiftKey.wasPressedThisFrame)

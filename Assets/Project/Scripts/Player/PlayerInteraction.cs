@@ -28,6 +28,7 @@ public class PlayerInteraction : MonoBehaviour
 
     void Update()
     {
+        if (GameStateManager.IsInputFrozen) return;
         HandleUniversalInteraction();
     }
 

@@ -126,8 +126,8 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
     void Update()
     {
-        // 升级面板/ESC暂停/游戏结束时冻结输入，同时强制中断持刀状态
-        if (GameStateManager.IsPaused || GameStateManager.IsGameOver)
+        // 升级面板/暂停/游戏结束时冻结输入，同时强制中断持刀状态
+        if (GameStateManager.IsInputFrozen)
         {
             if (meleeHolding)
             {
@@ -306,27 +306,41 @@ public class PlayerShooting : MonoBehaviour, IResettable
 
             if (currentGunData.bulletPrefab != null && firePoint != null)
             {
+                // Shoot toward crosshair: raycast from camera center
+                Vector3 aimDirection;
+                Camera cam = Camera.main;
+                if (cam != null)
+                {
+                    Ray ray = cam.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0));
+                    RaycastHit hit;
+                    if (Physics.Raycast(ray, out hit, 1000f, Physics.DefaultRaycastLayers))
+                        aimDirection = (hit.point - firePoint.position).normalized;
+                    else
+                        aimDirection = ray.direction;
+                }
+                else
+                {
+                    aimDirection = firePoint.forward;
+                }
+
                 int pellets = currentGunData.bulletsPerShot;
                 float spread = currentGunData.spreadAngle;
 
                 for (int i = 0; i < pellets; i++)
                 {
-                    Quaternion pelletRotation = firePoint.rotation;
+                    Quaternion pelletRotation = Quaternion.LookRotation(aimDirection);
 
-                    // 霰弹枪模式：为每一发弹丸叠加随机散布
                     if (spread > 0f)
                     {
                         float randomYaw   = UnityEngine.Random.Range(-spread, spread);
                         float randomPitch = UnityEngine.Random.Range(-spread, spread);
-                        pelletRotation = firePoint.rotation * Quaternion.Euler(randomPitch, randomYaw, 0f);
+                        pelletRotation = Quaternion.LookRotation(aimDirection) * Quaternion.Euler(randomPitch, randomYaw, 0f);
                     }
 
                     GameObject bulletObj = Instantiate(currentGunData.bulletPrefab, firePoint.position, pelletRotation);
                     Bullet bulletScript = bulletObj.GetComponent<Bullet>();
                     if (bulletScript != null)
-                    {
                         bulletScript.Initialize(currentGunData.damage);
-                    }
                 }
             }
         }
