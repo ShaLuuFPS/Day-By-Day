@@ -19,42 +19,42 @@ MonoBehaviour:
     spawnEntries:
     - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
       weight: 10
-      overridePrefab: {fileID: 9068081391238404794, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
+      overridePrefab: {fileID: 0}
   - totalEnemyCount: 10
     maxAliveCount: 6
     spawnInterval: 0.8
     spawnEntries:
     - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
       weight: 10
-      overridePrefab: {fileID: 9068081391238404794, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
+      overridePrefab: {fileID: 0}
     - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
       weight: 1
-      overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+      overridePrefab: {fileID: 0}
   - totalEnemyCount: 15
     maxAliveCount: 8
     spawnInterval: 0.5
     spawnEntries:
     - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
       weight: 10
-      overridePrefab: {fileID: 9068081391238404794, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
+      overridePrefab: {fileID: 0}
     - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
       weight: 2
-      overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+      overridePrefab: {fileID: 0}
     - zombieData: {fileID: 11400000, guid: faf717f88f53f8446b078a240bafd08e, type: 2}
       weight: 0.5
-      overridePrefab: {fileID: 5176121188932852737, guid: ea7671e40f366374c9d7c5ba047472b3, type: 3}
-  - totalEnemyCount: 35
-    maxAliveCount: 12
-    spawnInterval: 0.3
+      overridePrefab: {fileID: 0}
+  - totalEnemyCount: 20
+    maxAliveCount: 10
+    spawnInterval: 0.4
     spawnEntries:
     - zombieData: {fileID: 11400000, guid: 16895c645019b634c97a3201331b2fd4, type: 2}
       weight: 10
-      overridePrefab: {fileID: 9068081391238404794, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
+      overridePrefab: {fileID: 0}
     - zombieData: {fileID: 11400000, guid: 699d457c45e856942868f013d4f7dda5, type: 2}
       weight: 5
-      overridePrefab: {fileID: 7290681776868005076, guid: 626e695933016af429c4cd273c8fee0e, type: 3}
+      overridePrefab: {fileID: 0}
     - zombieData: {fileID: 11400000, guid: faf717f88f53f8446b078a240bafd08e, type: 2}
       weight: 2
-      overridePrefab: {fileID: 5176121188932852737, guid: ea7671e40f366374c9d7c5ba047472b3, type: 3}
+      overridePrefab: {fileID: 0}
   waveRestInterval: 2
   initialDelay: 1

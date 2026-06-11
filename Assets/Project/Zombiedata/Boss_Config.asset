@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Boss_Config
   m_EditorClassIdentifier: Assembly-CSharp::ZombieData
   zombieName: Boss
+  defaultPrefab: {fileID: 5176121188932852737, guid: ea7671e40f366374c9d7c5ba047472b3, type: 3}
   moveSpeed: 3
   stoppingDistance: 2
   chargeSpeed: 6

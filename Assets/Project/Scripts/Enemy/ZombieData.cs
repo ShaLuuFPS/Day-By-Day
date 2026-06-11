@@ -6,6 +6,10 @@ public class ZombieData : ScriptableObject
     [Header("僵尸身份")]
     public string zombieName = "普通僵尸";
 
+    [Header("预制体")]
+    [Tooltip("该僵尸类型的默认预制体（生成时优先使用，被 ZombieSpawnEntry.overridePrefab 覆盖）")]
+    public GameObject defaultPrefab;
+
     [Header("移动属性")]
     public float moveSpeed = 3.5f;
     public float stoppingDistance = 2.0f;

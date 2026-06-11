@@ -45,6 +45,15 @@ public class ZombieAI : MonoBehaviour
         ApplyConfig();
     }
 
+    // 程序化骨骼动画（非 Animator）
+    private ProceduralZombieAnimation _zombieAnim;
+
+    void Awake()
+    {
+        _zombieAnim = GetComponentInChildren<ProceduralZombieAnimation>();
+    }
+
+
     public void ApplyConfig()
     {
         if (zombieData == null) return;
@@ -167,7 +176,11 @@ public class ZombieAI : MonoBehaviour
             float speedMultiplier = (_isWarning && !_suicideBomber) ? 0.2f : 1f;
             Vector3 targetVelocity = directionToPlayer.normalized * effectiveSpeed * speedMultiplier;
             targetVelocity.y = rb.linearVelocity.y;
-            rb.linearVelocity = targetVelocity;
+            
+            // 更新骨骼动画状态
+            if (_zombieAnim != null)
+                _zombieAnim.UpdateMovementState(targetVelocity.magnitude);
+rb.linearVelocity = targetVelocity;
         }
     }
 
@@ -179,6 +192,10 @@ public class ZombieAI : MonoBehaviour
 
         Debug.Log($"[ZombieAI] {name} ExecuteAttack! dist={dist:F2} attackRange={_attackRange} " +
                   $"showWarning={zombieData?.showAttackWarning} isWarning={_isWarning} dmg={_attackDamage}");
+
+        // 触发攻击动画
+        if (_zombieAnim != null)
+            _zombieAnim.TriggerAttack();
 
         PlayerHealth ph = playerTransform.GetComponent<PlayerHealth>();
         if (ph != null)

@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a29d121cb6f4acc4893d305bd9cb7615, type: 3}
   m_Name: Default_Zombie_Config
   m_EditorClassIdentifier: Assembly-CSharp::ZombieData
-  zombieName: "\u666E\u901A\u50F5\u5C38"
+  zombieName: Zombie
+  defaultPrefab: {fileID: 4970800022558176142, guid: 9549efd0c6315804ba05b29d5d09d48f, type: 3}
   moveSpeed: 5
   stoppingDistance: 2
   chargeSpeed: 0
@@ -20,7 +21,7 @@ MonoBehaviour:
   attackRange: 2.5
   attackDamage: 10
   attackRate: 1
-  maxHealth: 40
+  maxHealth: 30
   baseColor: {r: 0, g: 1, b: 0, a: 1}
   hurtColor: {r: 1, g: 0, b: 0, a: 1}
   hurtFlashDuration: 0.1

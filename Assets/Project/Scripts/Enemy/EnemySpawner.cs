@@ -10,30 +10,22 @@ public class ZombieSpawnEntry
     public ZombieData zombieData;
     [Tooltip("生成权重（数值越大出现概率越高）")]
     public float weight = 1f;
-    [Tooltip("可选：该类型专属预制体（为空则使用 Spawner 的默认预制体）")]
+    [HideInInspector]
     public GameObject overridePrefab;
 }
 
-public class EnemySpawner : MonoBehaviour, IResettable
+/// <summary>
+/// 僵尸生成器 —— 纯工具，由 WaveManager 驱动。
+/// 负责：按权重选类型、确定预制体、找有效地面、实例化并注入配置。
+/// </summary>
+public class EnemySpawner : MonoBehaviour
 {
-    [Header("僵尸预制体（通用）")]
-    public GameObject zombiePrefab;
     public Transform playerTransform;
-
-    [Header("生成控制")]
-    public bool autoSpawn = true;
-    public float spawnInterval = 3.0f;
-    public int maxZombies = 15;
 
     [Header("范围控制")]
     public float minRadius = 15f;
     public float maxRadius = 30f;
     public float spawnYHeight = 3f;
-
-    [Header("多僵尸类型（至少添加一个条目）")]
-    public ZombieSpawnEntry[] spawnEntries;
-
-    private float timer = 0f;
 
     void Start()
     {
@@ -44,42 +36,35 @@ public class EnemySpawner : MonoBehaviour, IResettable
         }
     }
 
-    void Update()
-    {
-        if (!autoSpawn) return;
-        if (playerTransform == null || zombiePrefab == null) return;
-
-        int currentZombieCount = Object.FindObjectsByType<ZombieAI>().Length;
-
-        if (currentZombieCount < maxZombies)
-        {
-            timer += Time.deltaTime;
-            if (timer >= spawnInterval)
-            {
-                SpawnOneEnemy();
-                timer = 0f;
-            }
-        }
-    }
-
-    public void ResetData()
-    {
-        timer = 0f;
-    }
-
-    public void SpawnOneEnemy()
+    /// <summary>
+    /// 生成一只僵尸（由 WaveManager 调用）
+    /// </summary>
+    public void SpawnOneEnemy(ZombieSpawnEntry[] entries)
     {
         if (playerTransform == null) return;
+        if (entries == null || entries.Length == 0)
+        {
+            Debug.LogError("[Spawner] 生成条目为空，无法生成");
+            return;
+        }
 
-        // 按权重随机抽取一条生成条目（只抽一次）
-        ZombieSpawnEntry selectedEntry = PickEntryByWeight();
+        // 按权重随机抽取一条生成条目
+        ZombieSpawnEntry selectedEntry = PickEntryByWeight(entries);
         ZombieData selectedData = selectedEntry?.zombieData;
 
-        GameObject prefabToUse = (selectedEntry != null && selectedEntry.overridePrefab != null)
-            ? selectedEntry.overridePrefab
-            : zombiePrefab;
+        // 优先级：SpawnEntry 覆盖 > ZombieData 默认
+        GameObject prefabToUse = null;
+        if (selectedEntry != null && selectedEntry.overridePrefab != null)
+            prefabToUse = selectedEntry.overridePrefab;
+        else if (selectedData != null && selectedData.defaultPrefab != null)
+            prefabToUse = selectedData.defaultPrefab;
 
-        if (prefabToUse == null) return;
+        if (prefabToUse == null)
+        {
+            Debug.LogError($"[Spawner] 无法确定预制体：{selectedData?.zombieName} 的 defaultPrefab 未设置，" +
+                           "且 spawnEntry.overridePrefab 也为空");
+            return;
+        }
 
         // 重试找有效地面（避免虚空生成）
         // 用 RaycastAll 取最低点，防止单个 Raycast 被空中装饰物/树冠误判为地面
@@ -91,8 +76,8 @@ public class EnemySpawner : MonoBehaviour, IResettable
 
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            Vector2 rp = UnityEngine.Random.insideUnitCircle.normalized;
-            float rd = UnityEngine.Random.Range(minRadius, maxRadius);
+            Vector2 rp = Random.insideUnitCircle.normalized;
+            float rd = Random.Range(minRadius, maxRadius);
             Vector3 candidate = playerTransform.position + new Vector3(rp.x, 0f, rp.y) * rd;
 
             Vector3 rayOrigin = new Vector3(candidate.x, rayStartY, candidate.z);
@@ -164,26 +149,26 @@ public class EnemySpawner : MonoBehaviour, IResettable
     /// <summary>
     /// 按权重随机抽取一个生成条目
     /// </summary>
-    ZombieSpawnEntry PickEntryByWeight()
+    static ZombieSpawnEntry PickEntryByWeight(ZombieSpawnEntry[] entries)
     {
-        if (spawnEntries == null || spawnEntries.Length == 0) return null;
+        if (entries == null || entries.Length == 0) return null;
 
         float totalWeight = 0f;
-        foreach (var entry in spawnEntries)
+        foreach (var entry in entries)
             totalWeight += entry.weight;
 
-        if (totalWeight <= 0f) return spawnEntries[0];
+        if (totalWeight <= 0f) return entries[0];
 
-        float roll = UnityEngine.Random.Range(0f, totalWeight);
+        float roll = Random.Range(0f, totalWeight);
         float cumulative = 0f;
-        foreach (var entry in spawnEntries)
+        foreach (var entry in entries)
         {
             cumulative += entry.weight;
             if (roll <= cumulative)
                 return entry;
         }
 
-        return spawnEntries[0];
+        return entries[0];
     }
 
     void OnDrawGizmosSelected()

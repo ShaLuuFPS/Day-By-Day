@@ -32,6 +32,15 @@ public class EnemyHealth : MonoBehaviour
         ApplyConfig();
     }
 
+    // 程序化动画引用
+    private ProceduralZombieAnimation _zombieAnim;
+
+    void Awake()
+    {
+        _zombieAnim = GetComponentInChildren<ProceduralZombieAnimation>();
+    }
+
+
     public void ApplyConfig()
     {
         if (zombieData == null) return;
@@ -69,6 +78,10 @@ public class EnemyHealth : MonoBehaviour
 
     void ShowHurtEffect()
     {
+        // 触发受伤动画
+        if (_zombieAnim != null)
+            _zombieAnim.TriggerHurt();
+
         if (enemyRenderer == null) return;
         enemyRenderer.material.color = _hurtColor;
         StartCoroutine(ResetColorAfterDelay(_hurtFlashDuration));
@@ -86,6 +99,10 @@ public class EnemyHealth : MonoBehaviour
         if (_isDead) return;
         _isDead = true;
 
+        // 触发死亡动画
+        if (_zombieAnim != null)
+            _zombieAnim.TriggerDeath();
+
         // 通知外部系统（WaveManager / UpgradeManager 等）有敌人死亡
         OnAnyEnemyDied?.Invoke(this);
 
@@ -98,7 +115,9 @@ public class EnemyHealth : MonoBehaviour
 
         TryDropLoot();
         SpawnXPOrb();
-        Destroy(gameObject);
+        
+        // 延迟销毁，让死亡动画播放一帧
+        Destroy(gameObject, 0.5f);
     }
 
     public void Explode()

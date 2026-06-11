@@ -21,7 +21,6 @@ public class WaveManager : MonoBehaviour, IResettable
     [SerializeField] private WaveState state = WaveState.Idle;
 
     private Coroutine _waveRoutine;
-    private ZombieSpawnEntry[] _originalSpawnEntries;
 
     private enum WaveState
     {
@@ -36,12 +35,6 @@ public class WaveManager : MonoBehaviour, IResettable
     {
         if (enemySpawner == null)
             enemySpawner = GetComponent<EnemySpawner>();
-
-        if (enemySpawner != null)
-        {
-            _originalSpawnEntries = enemySpawner.spawnEntries;
-            enemySpawner.autoSpawn = false; // 接管生成控制权
-        }
 
         // 初始启动波次系统
         StartGame();
@@ -113,17 +106,10 @@ public class WaveManager : MonoBehaviour, IResettable
             state = WaveState.AllComplete;
             Debug.Log("[WaveManager] 🎉 所有波次完成！");
             GameStateManager.OnAllWavesComplete?.Invoke();
-
-            // 恢复 spawner 原始配置
-            RestoreSpawnerEntries();
             return;
         }
 
         WaveEntry wave = waveConfig.waves[currentWaveIndex];
-
-        // 设置 spawner 使用本波的生成条目
-        if (wave.spawnEntries != null && wave.spawnEntries.Length > 0)
-            enemySpawner.spawnEntries = wave.spawnEntries;
 
         spawnedCount = 0;
         aliveCount = 0;
@@ -146,7 +132,7 @@ public class WaveManager : MonoBehaviour, IResettable
 
             if (enemySpawner != null)
             {
-                enemySpawner.SpawnOneEnemy();
+                enemySpawner.SpawnOneEnemy(wave.spawnEntries);
                 spawnedCount++;
                 aliveCount++;
             }
@@ -176,7 +162,6 @@ public class WaveManager : MonoBehaviour, IResettable
             state = WaveState.AllComplete;
             Debug.Log("[WaveManager] 🎉 所有波次完成！恭喜！");
             GameStateManager.OnAllWavesComplete?.Invoke();
-            RestoreSpawnerEntries();
             return;
         }
 
@@ -191,12 +176,6 @@ public class WaveManager : MonoBehaviour, IResettable
         Debug.Log($"[WaveManager] ⏸ 波间休息 {rest} 秒...");
         yield return new WaitForSeconds(rest);
         StartWave();
-    }
-
-    void RestoreSpawnerEntries()
-    {
-        if (enemySpawner != null && _originalSpawnEntries != null)
-            enemySpawner.spawnEntries = _originalSpawnEntries;
     }
 
     /// <summary>
@@ -214,8 +193,6 @@ public class WaveManager : MonoBehaviour, IResettable
         spawnedCount = 0;
         aliveCount = 0;
         state = WaveState.Idle;
-
-        RestoreSpawnerEntries();
 
         // 重新开始波次循环
         if (waveConfig != null && waveConfig.waves != null && waveConfig.waves.Length > 0)

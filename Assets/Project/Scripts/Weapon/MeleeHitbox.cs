@@ -232,7 +232,7 @@ public class MeleeHitbox : MonoBehaviour
 
     void OnDestroy()
     {
-        if (fanMaterial != null) Destroy(fanMaterial);
+        // fanMaterial is an Inspector-assigned asset — do not Destroy;
         if (fanMesh != null) Destroy(fanMesh);
     }
 
