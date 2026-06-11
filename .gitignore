@@ -110,3 +110,10 @@ InitTestScene*.unity*
 .agents/
 .claude/
 skills-lock.json
+
+# Playwright MCP temp files
+.playwright-mcp/
+
+# Dev screenshots
+Assets/Screenshots/
+Assets/Screenshots.meta

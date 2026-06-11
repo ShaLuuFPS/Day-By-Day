@@ -1,6 +1,12 @@
 # Day By Day
 
-俯视角丧尸生存射击游戏 · Unity 6 + URP
+第三人称丧尸生存射击游戏 · Unity 6 + URP
+
+## 视角与角色
+
+- **第三人称轨道摄像机**：鼠标旋转视角、滚轮缩放、肩后偏移
+- **主角模型**：AnimeGirl + Mixamo 动画（Idle / 8方向移动 / 步枪瞄准 / 射击）
+- **瞄准**：屏幕中心准星 → 摄像机射线投射，子弹从 firePoint 射向命中点
 
 ## 玩法
 
@@ -10,14 +16,15 @@
 
 | 按键 | 功能 |
 |------|------|
-| WASD | 移动 |
-| 鼠标 | 瞄准 |
+| WASD | 移动（相对摄像机方向） |
+| 鼠标移动 | 旋转视角 |
+| 滚轮 | 缩放摄像机距离 |
 | 左键 | 射击 / 近战（按住显示范围，松开攻击） |
 | R | 换弹 |
 | 1 / 2 | 切换武器槽 |
 | Shift | Dash 冲刺 |
 | E | 拾取地面武器 |
-| ESC | 暂停 |
+| ESC | 暂停 / 释放鼠标 |
 
 ### 近战系统
 
@@ -54,7 +61,8 @@
 
 ## 技术方案
 
-- **架构**：ScriptableObject 武器配置、IResettable 接口统一重置契约、静态事件解耦模块间通信
+- **架构**：ScriptableObject 武器/僵尸配置、IResettable 接口统一重置契约、静态事件解耦模块间通信、EnemySpawner 纯工具由 WaveManager 驱动
+- **动画**：Animator + BlendTree 8方向移动混合、Mixamo 动画资源
 - **渲染**：URP 管线 + Canvas Scaler 锚点自适应布局 + TextMeshPro 富文本
 - **输入**：Unity New Input System（键盘 + 鼠标）
 - **特效**：预制体引用拖入，禁止 `Shader.Find` / `CreatePrimitive` 手搓材质
