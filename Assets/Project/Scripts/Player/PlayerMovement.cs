@@ -44,6 +44,9 @@ public class PlayerMovement : MonoBehaviour, IResettable
     private bool cachedIsDashing;
     private float cachedInputX, cachedInputZ;
 
+    // 惯性滑行
+    private Vector3 lastMoveDir = Vector3.forward;
+
     void Start()
     {
         playerHealth = GetComponent<PlayerHealth>();
@@ -152,7 +155,7 @@ public class PlayerMovement : MonoBehaviour, IResettable
                 // 非举枪模式：移动即朝向，只有正前方
                 float spd = maxSpeed > 0.01f ? Mathf.Clamp01(currentSpeed / maxSpeed) : 0f;
                 animator.SetFloat("MoveX", 0f);
-                animator.SetFloat("MoveZ", inputMagnitude > 0.01f ? spd : 0f);
+                animator.SetFloat("MoveZ", spd);
                 animator.SetFloat("Speed", spd);
 
                 // 检测 180° 转身
@@ -202,9 +205,17 @@ public class PlayerMovement : MonoBehaviour, IResettable
         currentSpeed = currentVelocity;
 
         // ── 水平移动：用 MovePosition 移动，不碰 velocity，Y 完全由物理引擎管理 ──
-        Vector3 horizVel = (!isDashing && hasInput) ? worldMoveDir * currentSpeed : Vector3.zero;
-        if (horizVel.magnitude > 0.001f)
-            rb.MovePosition(rb.position + horizVel * Time.fixedDeltaTime);
+        // 有输入 → 朝输入方向移动并缓存方向；无输入 → 惯性滑行到停
+        if (!isDashing && hasInput)
+        {
+            lastMoveDir = worldMoveDir;
+            rb.MovePosition(rb.position + worldMoveDir * currentSpeed * Time.fixedDeltaTime);
+        }
+        else if (!isDashing && currentSpeed > 0.001f)
+        {
+            // 无输入但还在减速 → 惯性滑行
+            rb.MovePosition(rb.position + lastMoveDir * currentSpeed * Time.fixedDeltaTime);
+        }
 
         // ── 旋转 ──
         if (IsAiming)
