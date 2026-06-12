@@ -1017,14 +1017,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 1211310734}
-  distance: 8
   height: 1.7
   shoulderOffset: 0.7
   sensitivity: 1
-  minDistance: 3
-  maxDistance: 15
   minPitch: -85
   maxPitch: 85
+  normalDistance: 8
+  aimDistance: 3
+  zoomSpeed: 8
   crosshairColor: {r: 1, g: 1, b: 1, a: 1}
   crosshairSize: 8
   crosshairThickness: 2
@@ -3737,12 +3737,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a15707f5b34eff4aa5e0368c60d3c60, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  maxSpeed: 10
-  acceleration: 5
-  deceleration: 10
+  maxSpeed: 8
+  acceleration: 10
+  deceleration: 15
   rotationSpeed: 12
   aimRotationSpeed: 15
-  walkSpeedMultiplier: 0.5
+  walkSpeedMultiplier: 0.3
+  jumpForce: 5
   animator: {fileID: 1071382657}
 --- !u!136 &1211310731
 CapsuleCollider:
