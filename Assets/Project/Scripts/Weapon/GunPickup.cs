@@ -55,8 +55,8 @@ public class GunPickup : MonoBehaviour, IInteractable
     }
 
     // 🌟 实现接口：按下 E 键后真实干的事
-    public void Interact(PlayerShooting player)
+    public void Interact(WeaponManager weaponManager)
     {
-        player.ExecuteInteraction(this, gameObject);
+        weaponManager.PickupWeapon(this, gameObject);
     }
 }

@@ -5,7 +5,9 @@ using UnityEngine.UI;
 public class WeaponUIManager : MonoBehaviour
 {
     [Header("🧩 场景中的 Player 引用")]
-    public PlayerShooting playerWeapon;
+    public WeaponManager weaponManager;
+    public GunModule gunModule;
+    public MeleeModule meleeModule;
 
     [Header("🎨 UI 独立模块连线")]
     public TextMeshProUGUI reloadActionText;  // "按R/左键换弹"
@@ -48,24 +50,30 @@ public class WeaponUIManager : MonoBehaviour
 
     void OnEnable()
     {
-        PlayerShooting.OnAmmoChanged += RefreshAmmoUI;
-        PlayerShooting.OnReloading += HandleReloadingUI;
-        PlayerShooting.OnReloadComplete += HideReloadUI;
-        PlayerShooting.OnEmptyClipFired += ShowEmptyWarning;
+        if (weaponManager != null)
+            weaponManager.OnAmmoChanged += RefreshAmmoUI;
+        if (gunModule != null)
+        {
+            gunModule.OnReloading += HandleReloadingUI;
+            gunModule.OnReloadComplete += HideReloadUI;
+            gunModule.OnEmptyClipFired += ShowEmptyWarning;
+        }
 
-        // 🌟 核心修改：改为主持订阅 PlayerInteraction 广播出来的交互UI事件
         PlayerInteraction.OnShowInteractionUI += ShowInteractionTip;
         PlayerInteraction.OnHideInteractionUI += HideInteractionTip;
     }
 
     void OnDisable()
     {
-        PlayerShooting.OnAmmoChanged -= RefreshAmmoUI;
-        PlayerShooting.OnReloading -= HandleReloadingUI;
-        PlayerShooting.OnReloadComplete -= HideReloadUI;
-        PlayerShooting.OnEmptyClipFired -= ShowEmptyWarning;
+        if (weaponManager != null)
+            weaponManager.OnAmmoChanged -= RefreshAmmoUI;
+        if (gunModule != null)
+        {
+            gunModule.OnReloading -= HandleReloadingUI;
+            gunModule.OnReloadComplete -= HideReloadUI;
+            gunModule.OnEmptyClipFired -= ShowEmptyWarning;
+        }
 
-        // 🌟 核心修改：取消订阅
         PlayerInteraction.OnShowInteractionUI -= ShowInteractionTip;
         PlayerInteraction.OnHideInteractionUI -= HideInteractionTip;
     }
@@ -90,7 +98,7 @@ public class WeaponUIManager : MonoBehaviour
 
     void RefreshAmmoUI()
     {
-        if (playerWeapon == null) return;
+        if (weaponManager == null) return;
 
         // ── 双槽 UI ──
         RefreshSlot(slot0AmmoText, slot0NameText, 0);
@@ -100,8 +108,9 @@ public class WeaponUIManager : MonoBehaviour
         ApplySlotShift();
 
         // ── 清除空弹警告（有弹药时 / 切到近战时） ──
-        bool isMelee = playerWeapon.hasWeapon && playerWeapon.currentWeaponData?.weaponType == WeaponType.Melee;
-        if (isMelee || (playerWeapon.currentAmmo > 0 && !playerWeapon.isReloading))
+        bool isMelee = weaponManager.hasWeapon && weaponManager.IsCurrentMelee;
+        bool isReloading = gunModule != null && gunModule.isReloading;
+        if (isMelee || (weaponManager.currentAmmo > 0 && !isReloading))
         {
             if (reloadActionText != null) reloadActionText.text = "";
             if (reloadStatusText != null) reloadStatusText.text = "";
@@ -111,7 +120,7 @@ public class WeaponUIManager : MonoBehaviour
 
     void ApplySlotShift()
     {
-        int activeIdx = playerWeapon.activeSlotIndex;
+        int activeIdx = weaponManager.activeSlotIndex;
         float shift = activeSlotLeftShift;
 
         if (slot0Container != null)
@@ -134,10 +143,10 @@ public class WeaponUIManager : MonoBehaviour
 
     void RefreshSlot(TextMeshProUGUI ammoText, TextMeshProUGUI nameText, int slotIndex)
     {
-        WeaponSlot slot = (playerWeapon.slots != null && slotIndex < playerWeapon.slots.Length)
-            ? playerWeapon.slots[slotIndex] : null;
+        WeaponSlot slot = (weaponManager.slots != null && slotIndex < weaponManager.slots.Length)
+            ? weaponManager.slots[slotIndex] : null;
 
-        bool isActive = (slotIndex == playerWeapon.activeSlotIndex);
+        bool isActive = (slotIndex == weaponManager.activeSlotIndex);
 
         if (slot == null || slot.IsEmpty)
         {
@@ -158,7 +167,7 @@ public class WeaponUIManager : MonoBehaviour
                 if (isActive)
                 {
                     nameText.color = Color.white;
-                    int combo = playerWeapon.MeleeComboStage;
+                    int combo = meleeModule != null ? meleeModule.ComboStage : 0;
                     string comboStr = combo > 0 ? $" <size={comboFontSize}><color=#E9E9E9>连{combo}</color></size>" : "";
                     nameText.text = $"<size={activeNameFontSize}>{weaponName}{comboStr}</size>";
                 }
@@ -204,15 +213,15 @@ public class WeaponUIManager : MonoBehaviour
 
     void HandleReloadingUI(float elapsed)
     {
-        if (playerWeapon == null) return;
+        if (weaponManager == null) return;
         if (reloadSlider != null)
         {
             if (!reloadSlider.gameObject.activeSelf) reloadSlider.gameObject.SetActive(true);
-            reloadSlider.value = elapsed / playerWeapon.reloadTime;
+            reloadSlider.value = elapsed / weaponManager.reloadTime;
         }
         if (reloadStatusText != null)
         {
-            float remaining = playerWeapon.reloadTime - elapsed;
+            float remaining = weaponManager.reloadTime - elapsed;
             reloadStatusText.text = $"正在换弹... ({remaining.ToString("F1")}s)";
         }
     }
