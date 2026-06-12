@@ -3,17 +3,17 @@ using UnityEngine.InputSystem;
 using System;
 using System.Collections.Generic;
 
-public class PlayerInteraction : MonoBehaviour
+public class PlayerInteraction : MonoBehaviour, IResettable
 {
     [Header("交互防抖配置")]
     private static float globalPickupTimer = 0f;
     private const float PICKUP_COOLDOWN = 1.0f;
 
     [Header("缓存雷达队列")]
-    private List<IInteractable> nearbyInteractables = new List<IInteractable>(); // 附近所有的交互物
+    private List<IInteractable> nearbyInteractables = new List<IInteractable>();
 
-    // 缓存玩家身上的射击组件，用于传参
-    private PlayerShooting playerShooting;
+    // 缓存玩家身上的武器中枢组件，用于传参
+    private WeaponManager weaponManager;
     private MeleeHitbox meleeHitbox;
 
     // 🌟 核心通用交互事件：改由雷达脚本来向 UI Manager 发送通知
@@ -22,7 +22,7 @@ public class PlayerInteraction : MonoBehaviour
 
     void Awake()
     {
-        playerShooting = GetComponent<PlayerShooting>();
+        weaponManager = GetComponent<WeaponManager>();
         meleeHitbox = GetComponentInChildren<MeleeHitbox>();
     }
 
@@ -61,8 +61,8 @@ public class PlayerInteraction : MonoBehaviour
             IInteractable target = closestInteractable;
             nearbyInteractables.Remove(target);
 
-            // 砰！触发这个物体特有的 Interact 逻辑，把玩家射击组件传过去
-            target.Interact(playerShooting);
+            // 砰！触发这个物体特有的 Interact 逻辑，把武器中枢传过去
+            target.Interact(weaponManager);
         }
     }
 
@@ -105,6 +105,12 @@ public class PlayerInteraction : MonoBehaviour
         OnHideInteractionUI?.Invoke();
     }
 
+    // ── IResettable ──
+    public void ResetData()
+    {
+        ClearRadar();
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         // 🔒 防止近战 Hitbox 的大触发球误将武器加入雷达
@@ -115,13 +121,13 @@ public class PlayerInteraction : MonoBehaviour
         if (interactable != null)
         {
             // 🌟 核心改动：如果是地面的枪，并且和玩家手里的枪同名，直接自动触发交互！
-            if (interactable is GunPickup groundGun && playerShooting != null && playerShooting.hasWeapon)
+            if (interactable is GunPickup groundGun && weaponManager != null && weaponManager.hasWeapon)
             {
                 if (groundGun.weaponConfig != null
-                    && playerShooting.FindSlotByWeaponName(groundGun.weaponConfig.weaponName) >= 0)
+                    && weaponManager.FindSlotByWeaponName(groundGun.weaponConfig.weaponName) >= 0)
                 {
                     // 同款武器自动吸走补弹（遍历双槽查找匹配）
-                    interactable.Interact(playerShooting);
+                    interactable.Interact(weaponManager);
                     return;
                 }
             }

@@ -10,7 +10,7 @@ public class InteractableDoor : MonoBehaviour, IInteractable
     public string InteractionPrompt => isOpen ? $"关闭 {doorName}" : $"打开 {doorName}";
 
     // 🌟 实现契约：按 E 后会发生什么
-    public void Interact(PlayerShooting player)
+    public void Interact(WeaponManager weaponManager)
     {
         isOpen = !isOpen;
 

@@ -6,5 +6,5 @@ public interface IInteractable
     string InteractionPrompt { get; }
 
     // 真正按下 E 键时触发的核心逻辑
-    void Interact(PlayerShooting player);
+    void Interact(WeaponManager weaponManager);
 }

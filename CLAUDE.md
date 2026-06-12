@@ -31,3 +31,17 @@
 - **验证加载**：用 `claude mcp list` 检查实际加载的 server 列表；`claude mcp add <name> <args>` 添加；项目级 `.mcp.json` 的 key 是 `mcpServers` 对象
 
 <!-- headroom:learn:end -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues 通过 GitHub MCP 直接操作（仓库：ShaLuuFPS/Day-By-Day），无需 `gh` CLI。参见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用默认标签名：`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`。参见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文布局：`CONTEXT.md` + `docs/adr/`。参见 `docs/agents/domain.md`。

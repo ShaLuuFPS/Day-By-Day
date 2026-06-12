@@ -8,14 +8,20 @@ public class CameraFollow : MonoBehaviour
     public Transform target;
 
     [Header("Orbit")]
-    public float distance = 8f;
     public float height = 0.8f;
     public float shoulderOffset = 0.7f;
-    [Range(0.1f, 5f)] public float sensitivity = 1f;
-    public float minDistance = 3f;
-    public float maxDistance = 15f;
+    [Range(0.1f, 3f)] public float sensitivity = 1f;
     public float minPitch = -85f;
     public float maxPitch = 85f;
+    private const float SensitivityMultiplier = 0.1f; // 0.1→旧0.01, 1→旧0.1, 3→旧0.3
+
+    [Header("Aim Zoom — 可在此调试拉近拉远距离")]
+    public float normalDistance = 8f;
+    public float aimDistance = 3f;
+    [Range(1f, 20f)] public float zoomSpeed = 8f;
+
+    private float _currentDistance;
+    private float _targetDistance;
 
     [Header("Crosshair")]
     public Color crosshairColor = Color.white;
@@ -29,19 +35,22 @@ public class CameraFollow : MonoBehaviour
 
     void Start()
     {
-        sensitivity = PlayerPrefs.GetFloat("CameraSensitivity", 1f);
+        sensitivity = PlayerPrefs.GetFloat("CameraSensitivityV2", 1f);
         if (target != null) currentYaw = target.eulerAngles.y;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        _currentDistance = normalDistance;
+        _targetDistance = normalDistance;
 
         if (target != null)
         {
             Vector3 rightDir = Quaternion.Euler(0, currentYaw, 0) * Vector3.right;
             Vector3 orbitCenter = target.position + rightDir * shoulderOffset + Vector3.up * height;
             Vector3 backDir = Quaternion.Euler(0, currentYaw, 0) * Vector3.back;
-            transform.position = orbitCenter + Quaternion.AngleAxis(currentPitch, rightDir) * (backDir * distance);
+            transform.position = orbitCenter + Quaternion.AngleAxis(currentPitch, rightDir) * (backDir * _currentDistance);
             transform.LookAt(orbitCenter + Vector3.up * 1.2f);
-            
+
         }
 
         CreateCrosshair();
@@ -73,17 +82,21 @@ public class CameraFollow : MonoBehaviour
 
         if (Mouse.current != null)
         {
-            currentYaw += Mouse.current.delta.x.ReadValue() * sensitivity * 3f;
-            currentPitch -= Mouse.current.delta.y.ReadValue() * sensitivity * 3f;
+            currentYaw += Mouse.current.delta.x.ReadValue() * sensitivity * SensitivityMultiplier * 3f;
+            currentPitch -= Mouse.current.delta.y.ReadValue() * sensitivity * SensitivityMultiplier * 3f;
             currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
-            distance -= Mouse.current.scroll.y.ReadValue() * 2f;
-            distance = Mathf.Clamp(distance, minDistance, maxDistance);
+
+            // 右键举枪 → 镜头拉近
+            bool isAiming = Mouse.current.rightButton.isPressed;
+            _targetDistance = isAiming ? aimDistance : normalDistance;
         }
+
+        _currentDistance = Mathf.Lerp(_currentDistance, _targetDistance, Time.deltaTime * zoomSpeed);
 
         Vector3 rightDir = Quaternion.Euler(0, currentYaw, 0) * Vector3.right;
         Vector3 orbitCenter = target.position + rightDir * shoulderOffset + Vector3.up * height;
         Vector3 backDir = Quaternion.Euler(0, currentYaw, 0) * Vector3.back;
-        Vector3 camPos = orbitCenter + Quaternion.AngleAxis(currentPitch, rightDir) * (backDir * distance);
+        Vector3 camPos = orbitCenter + Quaternion.AngleAxis(currentPitch, rightDir) * (backDir * _currentDistance);
 
         transform.position = camPos;
         // 直接由 yaw/pitch 构造旋转，避开 LookAt 在极端俯仰角时的万向节翻转

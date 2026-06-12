@@ -115,9 +115,13 @@ public class EnemyHealth : MonoBehaviour
 
         TryDropLoot();
         SpawnXPOrb();
-        
-        // 延迟销毁，让死亡动画播放一帧
-        Destroy(gameObject, 0.5f);
+
+        // 立即隐藏模型（死亡动画只是瞬间旋转，无需等待）
+        if (enemyRenderer != null)
+            enemyRenderer.enabled = false;
+
+        // 延迟销毁以完成 loot/XP 等清理
+        Destroy(gameObject, 0.1f);
     }
 
     public void Explode()
