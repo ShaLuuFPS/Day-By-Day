@@ -35,7 +35,7 @@ public class CameraFollow : MonoBehaviour
 
     void Start()
     {
-        sensitivity = PlayerPrefs.GetFloat("CameraSensitivityV2", 1f);
+        sensitivity = PlayerPrefs.GetFloat("CameraSensitivityV2", sensitivity);
         if (target != null) currentYaw = target.eulerAngles.y;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -58,19 +58,10 @@ public class CameraFollow : MonoBehaviour
 
     void Update()
     {
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            if (Cursor.lockState == CursorLockMode.Locked)
-            { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
-            else
-            { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
-        }
-        if (GameStateManager.IsInputFrozen)
-        {
-            if (Cursor.lockState == CursorLockMode.Locked)
-            { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
-            return;
-        }
+        // 光标由 GameStateManager 统一管理，CameraFollow 不再触碰
+        if (GameStateManager.IsInputFrozen) return;
+
+        // 正常游戏中保持光标锁定（处理切窗口等边界情况）
         if (Cursor.lockState != CursorLockMode.Locked)
         { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
     }

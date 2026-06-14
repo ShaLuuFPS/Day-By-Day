@@ -66,13 +66,17 @@ public class GameStateManager : MonoBehaviour
         {
             Time.timeScale = 1f;
             IsManualPaused = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
             OnPauseToggled?.Invoke(false);
             Debug.Log("[GameStateManager] ▶ 游戏恢复");
         }
         else
         {
-            Time.timeScale = 0f;
+            Time.timeScale = 0.0001f; // 极小值保持 Input System 事件管道活跃，肉眼不可见漂移
             IsManualPaused = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
             OnPauseToggled?.Invoke(true);
             Debug.Log("[GameStateManager] ⏸ 游戏暂停");
         }
@@ -81,14 +85,18 @@ public class GameStateManager : MonoBehaviour
     void ShowVictory()
     {
         IsGameOver = true;
-        Time.timeScale = 0f;
+        Time.timeScale = 0.0001f; // 极小值保持 Input System 事件管道活跃，肉眼不可见漂移
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         Debug.Log("[GameStateManager] 🎉 胜利");
     }
 
     void ShowGameOver()
     {
         IsGameOver = true;
-        Time.timeScale = 0f;
+        Time.timeScale = 0.0001f; // 极小值保持 Input System 事件管道活跃，肉眼不可见漂移
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         Debug.Log("[GameStateManager] 💀 死亡");
     }
 
@@ -117,6 +125,8 @@ public class GameStateManager : MonoBehaviour
         IsUpgradePaused = false;
         IsGameOver = false;
         Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
         // 2. 通知 UI 隐藏所有面板
         OnRestartGame?.Invoke();

@@ -65,8 +65,10 @@ public class LevelUpManager : MonoBehaviour, IResettable
             return;
         }
 
-        Time.timeScale = 0f;
+        Time.timeScale = 0.0001f; // 极小值保持 Input System 事件管道活跃
         GameStateManager.IsUpgradePaused = true;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         ShowChoices();
     }
 
@@ -103,6 +105,10 @@ public class LevelUpManager : MonoBehaviour, IResettable
             titleText.text = "选择升级";
 
         levelUpPanel.SetActive(true);
+
+        // 强制 EventSystem 聚焦第一个按钮，解决 timeScale=0 时点击失效
+        if (choiceButtons.Length > 0 && choiceButtons[0] != null)
+            UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(choiceButtons[0].gameObject);
     }
 
     void OnChoiceSelected(UpgradeData selected)
@@ -115,6 +121,8 @@ public class LevelUpManager : MonoBehaviour, IResettable
             levelUpPanel.SetActive(false);
         Time.timeScale = 1f;
         GameStateManager.IsUpgradePaused = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     UpgradeData[] PickRandomUpgrades(int count)

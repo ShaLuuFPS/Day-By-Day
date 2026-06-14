@@ -20,6 +20,13 @@ public class GameStateUI : MonoBehaviour
     private GameObject pauseConfirmGroup;
     private GameObject pauseButtonGroup;
 
+    // 默认选中按钮（强制 EventSystem 聚焦，解决 timeScale=0 时点击失效）
+    private GameObject pauseFirstButton;
+    private GameObject victoryFirstButton;
+    private GameObject gameOverFirstButton;
+    private GameObject confirmFirstButton;
+    private GameObject confirmSecondButton;
+
     // ── 灵敏度配置 ──
     private Slider sensitivitySlider;
     private TextMeshProUGUI sensitivityLabel;
@@ -58,18 +65,22 @@ public class GameStateUI : MonoBehaviour
     {
         if (pausePanel != null)
             pausePanel.SetActive(paused);
+        if (paused)
+            SelectButton(pauseFirstButton);
     }
 
     void ShowVictoryPanel()
     {
         if (victoryPanel != null)
             victoryPanel.SetActive(true);
+        SelectButton(victoryFirstButton);
     }
 
     void ShowGameOverPanel()
     {
         if (gameOverPanel != null)
             gameOverPanel.SetActive(true);
+        SelectButton(gameOverFirstButton);
     }
 
     void HideAllPanels()
@@ -97,7 +108,7 @@ public class GameStateUI : MonoBehaviour
         pauseButtonGroup = CreateButtonGroup(pausePanel,
             new Vector2(0.25f, 0.12f), new Vector2(0.75f, 0.40f));
 
-        CreateButton(pauseButtonGroup, "继 续 游 戏",
+        pauseFirstButton = CreateButton(pauseButtonGroup, "继 续 游 戏",
             new Color(0.15f, 0.35f, 0.15f, 1f),
             new Color(0.25f, 0.55f, 0.25f, 1f),
             () => gameStateManager.TogglePause());
@@ -144,12 +155,12 @@ public class GameStateUI : MonoBehaviour
             tmp.font = FontHelper.GetFont();
         }
 
-        CreateButton(pauseConfirmGroup, "退    出",
+        confirmFirstButton = CreateButton(pauseConfirmGroup, "退    出",
             new Color(0.5f, 0.1f, 0.1f, 1f),
             new Color(0.7f, 0.2f, 0.2f, 1f),
             () => GameStateManager.ExitGame());
 
-        CreateButton(pauseConfirmGroup, "返    回",
+        confirmSecondButton = CreateButton(pauseConfirmGroup, "返    回",
             new Color(0.15f, 0.4f, 0.15f, 1f),
             new Color(0.25f, 0.6f, 0.25f, 1f),
             HidePauseExitConfirm);
@@ -163,12 +174,20 @@ public class GameStateUI : MonoBehaviour
     {
         if (pauseButtonGroup != null) pauseButtonGroup.SetActive(false);
         if (pauseConfirmGroup != null) pauseConfirmGroup.SetActive(true);
+        SelectButton(confirmFirstButton);
     }
 
     void HidePauseExitConfirm()
     {
         if (pauseConfirmGroup != null) pauseConfirmGroup.SetActive(false);
         if (pauseButtonGroup != null) pauseButtonGroup.SetActive(true);
+        SelectButton(pauseFirstButton);
+    }
+
+    void SelectButton(GameObject btn)
+    {
+        if (btn != null)
+            UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(btn);
     }
 
     void CreateSensitivitySlider(GameObject parent)
@@ -242,7 +261,10 @@ public class GameStateUI : MonoBehaviour
         slider.maxValue = 3f;
         slider.wholeNumbers = false;
 
-        float savedSens = PlayerPrefs.GetFloat(SensitivityKey, DefaultSensitivity);
+        float defaultSens = 1f;
+        CameraFollow cf = Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
+        if (cf != null) defaultSens = cf.sensitivity;
+        float savedSens = PlayerPrefs.GetFloat(SensitivityKey, defaultSens);
         slider.value = savedSens;
         UpdateSensitivityLabel(savedSens);
 
@@ -288,7 +310,7 @@ public class GameStateUI : MonoBehaviour
         GameObject btnGroup = CreateButtonGroup(victoryPanel,
             new Vector2(0.25f, 0.35f), new Vector2(0.75f, 0.48f));
 
-        CreateButton(btnGroup, "再 来 一 局",
+        victoryFirstButton = CreateButton(btnGroup, "再 来 一 局",
             new Color(0.15f, 0.3f, 0.5f, 1f),
             new Color(0.25f, 0.5f, 0.7f, 1f),
             () => gameStateManager.RestartGame());
@@ -321,7 +343,7 @@ public class GameStateUI : MonoBehaviour
         GameObject btnGroup = CreateButtonGroup(gameOverPanel,
             new Vector2(0.25f, 0.14f), new Vector2(0.75f, 0.38f));
 
-        CreateButton(btnGroup, "重 新 开 始",
+        gameOverFirstButton = CreateButton(btnGroup, "重 新 开 始",
             new Color(0.4f, 0.1f, 0.1f, 1f),
             new Color(0.6f, 0.2f, 0.2f, 1f),
             () => gameStateManager.RestartGame());
@@ -400,7 +422,7 @@ public class GameStateUI : MonoBehaviour
         return groupGo;
     }
 
-    void CreateButton(GameObject parent, string label,
+    GameObject CreateButton(GameObject parent, string label,
         Color normalColor, Color highlightColor,
         UnityEngine.Events.UnityAction callback)
     {
@@ -419,6 +441,7 @@ public class GameStateUI : MonoBehaviour
         Button btn = btnGo.GetComponent<Button>();
         var colors = btn.colors;
         colors.highlightedColor = highlightColor;
+        colors.selectedColor = highlightColor;
         btn.colors = colors;
         btn.onClick.AddListener(callback);
 
@@ -436,5 +459,6 @@ public class GameStateUI : MonoBehaviour
         tmp.color = Color.white;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.font = FontHelper.GetFont();
+        return btnGo;
     }
 }
