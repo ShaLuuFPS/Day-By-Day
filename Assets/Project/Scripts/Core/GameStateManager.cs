@@ -92,6 +92,19 @@ public class GameStateManager : MonoBehaviour
         Debug.Log("[GameStateManager] 💀 死亡");
     }
 
+    // ── 结束游戏 ──
+
+    /// <summary>结束游戏：编辑器退出 Play 模式，打包后退出程序</summary>
+    public static void ExitGame()
+    {
+        Debug.Log("[GameStateManager] 🚪 结束游戏");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
     // ── 重新开始 ──
 
     /// <summary>重新开始游戏（由 GameStateUI 按钮调用）</summary>

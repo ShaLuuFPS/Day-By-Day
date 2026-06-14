@@ -1022,8 +1022,8 @@ MonoBehaviour:
   sensitivity: 1
   minPitch: -85
   maxPitch: 85
-  normalDistance: 8
-  aimDistance: 3
+  normalDistance: 4
+  aimDistance: 2
   zoomSpeed: 8
   crosshairColor: {r: 1, g: 1, b: 1, a: 1}
   crosshairSize: 8
@@ -3572,7 +3572,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1178723188
 MonoBehaviour:
   m_ObjectHideFlags: 0

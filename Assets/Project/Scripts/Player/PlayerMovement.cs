@@ -16,6 +16,7 @@ public class PlayerMovement : MonoBehaviour, IResettable
 
     [Header("Animation")]
     public Animator animator;
+    [Range(5f, 40f)] public float animStopBlend = 20f;
 
     public Vector3 moveDirection { get; private set; }
     public float currentSpeed { get; private set; }
@@ -46,6 +47,9 @@ public class PlayerMovement : MonoBehaviour, IResettable
 
     // 惯性滑行
     private Vector3 lastMoveDir = Vector3.forward;
+
+    // 动画平滑
+    private float animSpeed;
 
     void Start()
     {
@@ -153,7 +157,12 @@ public class PlayerMovement : MonoBehaviour, IResettable
             else
             {
                 // 非举枪模式：移动即朝向，只有正前方
-                float spd = maxSpeed > 0.01f ? Mathf.Clamp01(currentSpeed / maxSpeed) : 0f;
+                float targetSpeed = (inputMagnitude > 0.01f && maxSpeed > 0.01f)
+                    ? Mathf.Clamp01(currentSpeed / maxSpeed)
+                    : 0f;
+                animSpeed = Mathf.MoveTowards(animSpeed, targetSpeed,
+                    animStopBlend * Time.deltaTime);
+                float spd = Mathf.Max(animSpeed, targetSpeed); // 加速不截断
                 animator.SetFloat("MoveX", 0f);
                 animator.SetFloat("MoveZ", spd);
                 animator.SetFloat("Speed", spd);
@@ -197,24 +206,18 @@ public class PlayerMovement : MonoBehaviour, IResettable
             currentVelocity = effectiveMaxSpeed;
 
         if (!isDashing && hasInput)
+        {
             currentVelocity = Mathf.MoveTowards(currentVelocity, effectiveMaxSpeed,
                 acceleration * Time.fixedDeltaTime);
-        else
-            currentVelocity = Mathf.MoveTowards(currentVelocity, 0f,
-                deceleration * Time.fixedDeltaTime);
-        currentSpeed = currentVelocity;
-
-        // ── 水平移动：用 MovePosition 移动，不碰 velocity，Y 完全由物理引擎管理 ──
-        // 有输入 → 朝输入方向移动并缓存方向；无输入 → 惯性滑行到停
-        if (!isDashing && hasInput)
-        {
+            currentSpeed = currentVelocity;
             lastMoveDir = worldMoveDir;
             rb.MovePosition(rb.position + worldMoveDir * currentSpeed * Time.fixedDeltaTime);
         }
-        else if (!isDashing && currentSpeed > 0.001f)
+        else
         {
-            // 无输入但还在减速 → 惯性滑行
-            rb.MovePosition(rb.position + lastMoveDir * currentSpeed * Time.fixedDeltaTime);
+            // 无输入 → 瞬停
+            currentVelocity = 0f;
+            currentSpeed = 0f;
         }
 
         // ── 旋转 ──

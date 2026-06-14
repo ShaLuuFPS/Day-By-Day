@@ -16,6 +16,10 @@ public class GameStateUI : MonoBehaviour
     private GameObject victoryPanel;
     private GameObject gameOverPanel;
 
+    // 暂停面板确认弹窗
+    private GameObject pauseConfirmGroup;
+    private GameObject pauseButtonGroup;
+
     // ── 灵敏度配置 ──
     private Slider sensitivitySlider;
     private TextMeshProUGUI sensitivityLabel;
@@ -89,20 +93,82 @@ public class GameStateUI : MonoBehaviour
 
         CreateSensitivitySlider(pausePanel);
 
-        GameObject btnGroup = CreateButtonGroup(pausePanel,
-            new Vector2(0.25f, 0.18f), new Vector2(0.75f, 0.40f));
+        // ── 主按钮组 ──
+        pauseButtonGroup = CreateButtonGroup(pausePanel,
+            new Vector2(0.25f, 0.12f), new Vector2(0.75f, 0.40f));
 
-        CreateButton(btnGroup, "继 续 游 戏",
+        CreateButton(pauseButtonGroup, "继 续 游 戏",
             new Color(0.15f, 0.35f, 0.15f, 1f),
             new Color(0.25f, 0.55f, 0.25f, 1f),
             () => gameStateManager.TogglePause());
 
-        CreateButton(btnGroup, "重 新 开 始",
+        CreateButton(pauseButtonGroup, "重 新 开 始",
             new Color(0.35f, 0.3f, 0.15f, 1f),
             new Color(0.55f, 0.45f, 0.2f, 1f),
             () => gameStateManager.RestartGame());
 
+        CreateButton(pauseButtonGroup, "结 束 游 戏",
+            new Color(0.2f, 0.2f, 0.2f, 1f),
+            new Color(0.35f, 0.35f, 0.35f, 1f),
+            ShowPauseExitConfirm);
+
+        // ── 退出确认 ──
+        pauseConfirmGroup = new GameObject("ExitConfirmGroup",
+            typeof(RectTransform), typeof(VerticalLayoutGroup));
+        pauseConfirmGroup.transform.SetParent(pausePanel.transform, false);
+        RectTransform cfgRect = pauseConfirmGroup.GetComponent<RectTransform>();
+        cfgRect.anchorMin = new Vector2(0.2f, 0.18f);
+        cfgRect.anchorMax = new Vector2(0.8f, 0.38f);
+        cfgRect.anchoredPosition = Vector2.zero;
+        cfgRect.sizeDelta = Vector2.zero;
+
+        VerticalLayoutGroup cfgVlg = pauseConfirmGroup.GetComponent<VerticalLayoutGroup>();
+        cfgVlg.childAlignment = TextAnchor.MiddleCenter;
+        cfgVlg.childForceExpandWidth = false;
+        cfgVlg.childForceExpandHeight = false;
+        cfgVlg.childControlWidth = true;
+        cfgVlg.childControlHeight = true;
+        cfgVlg.spacing = 12;
+
+        // 确认标题
+        {
+            GameObject titleGo = new GameObject("Title", typeof(RectTransform),
+                typeof(TextMeshProUGUI), typeof(LayoutElement));
+            titleGo.transform.SetParent(pauseConfirmGroup.transform, false);
+            titleGo.GetComponent<LayoutElement>().minHeight = 40;
+            TextMeshProUGUI tmp = titleGo.GetComponent<TextMeshProUGUI>();
+            tmp.text = "确定退出游戏？";
+            tmp.fontSize = 28;
+            tmp.color = new Color(0.85f, 0.85f, 0.85f, 1f);
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.font = FontHelper.GetFont();
+        }
+
+        CreateButton(pauseConfirmGroup, "退    出",
+            new Color(0.5f, 0.1f, 0.1f, 1f),
+            new Color(0.7f, 0.2f, 0.2f, 1f),
+            () => GameStateManager.ExitGame());
+
+        CreateButton(pauseConfirmGroup, "返    回",
+            new Color(0.15f, 0.4f, 0.15f, 1f),
+            new Color(0.25f, 0.6f, 0.25f, 1f),
+            HidePauseExitConfirm);
+
+        pauseConfirmGroup.SetActive(false);
+
         pausePanel.SetActive(false);
+    }
+
+    void ShowPauseExitConfirm()
+    {
+        if (pauseButtonGroup != null) pauseButtonGroup.SetActive(false);
+        if (pauseConfirmGroup != null) pauseConfirmGroup.SetActive(true);
+    }
+
+    void HidePauseExitConfirm()
+    {
+        if (pauseConfirmGroup != null) pauseConfirmGroup.SetActive(false);
+        if (pauseButtonGroup != null) pauseButtonGroup.SetActive(true);
     }
 
     void CreateSensitivitySlider(GameObject parent)
@@ -227,6 +293,11 @@ public class GameStateUI : MonoBehaviour
             new Color(0.25f, 0.5f, 0.7f, 1f),
             () => gameStateManager.RestartGame());
 
+        CreateButton(btnGroup, "结 束 游 戏",
+            new Color(0.2f, 0.2f, 0.2f, 1f),
+            new Color(0.35f, 0.35f, 0.35f, 1f),
+            () => GameStateManager.ExitGame());
+
         victoryPanel.SetActive(false);
     }
 
@@ -248,12 +319,17 @@ public class GameStateUI : MonoBehaviour
             new Vector2(0.15f, 0.43f), new Vector2(0.85f, 0.53f));
 
         GameObject btnGroup = CreateButtonGroup(gameOverPanel,
-            new Vector2(0.25f, 0.22f), new Vector2(0.75f, 0.38f));
+            new Vector2(0.25f, 0.14f), new Vector2(0.75f, 0.38f));
 
         CreateButton(btnGroup, "重 新 开 始",
             new Color(0.4f, 0.1f, 0.1f, 1f),
             new Color(0.6f, 0.2f, 0.2f, 1f),
             () => gameStateManager.RestartGame());
+
+        CreateButton(btnGroup, "结 束 游 戏",
+            new Color(0.2f, 0.2f, 0.2f, 1f),
+            new Color(0.35f, 0.35f, 0.35f, 1f),
+            () => GameStateManager.ExitGame());
 
         gameOverPanel.SetActive(false);
     }
