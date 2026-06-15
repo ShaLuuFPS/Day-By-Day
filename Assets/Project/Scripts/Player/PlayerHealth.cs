@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 // ✨ 核心重构：让 PlayerHealth 挂上 IResettable 契约！
 public class PlayerHealth : MonoBehaviour, IResettable
@@ -8,8 +7,11 @@ public class PlayerHealth : MonoBehaviour, IResettable
     public float maxHealth = 100f;
     private float currentHealth;
 
-    [Header("UI 连线")]
-    public Image healthBarFill;
+    /// <summary>当前血量（供 HUD 读取）</summary>
+    public float CurrentHealth => currentHealth;
+
+    /// <summary>血量变化时触发（当前，最大）</summary>
+    public static event System.Action<float, float> OnHealthChanged;
 
     // 供其他脚本（PlayerMovement / PlayerShooting）读取：主角是否已经阵亡
     public bool IsDead { get; private set; } = false;
@@ -60,8 +62,7 @@ public class PlayerHealth : MonoBehaviour, IResettable
 
     void UpdateHealthBar()
     {
-        if (healthBarFill == null) return;
-        healthBarFill.fillAmount = currentHealth / maxHealth;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     void PlayerDie()

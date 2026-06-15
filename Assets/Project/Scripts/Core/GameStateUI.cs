@@ -360,7 +360,8 @@ public class GameStateUI : MonoBehaviour
 
     Canvas GetCanvas()
     {
-        Canvas canvas = GetComponentInParent<Canvas>();
+        // 优先用 OverlayCanvas（sortingOrder=999），确保面板盖住所有 UI
+        Canvas canvas = GameObject.Find("OverlayCanvas")?.GetComponent<Canvas>();
         if (canvas == null)
             canvas = Object.FindAnyObjectByType<Canvas>();
         if (canvas == null)

@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using System;
 using System.Collections;
@@ -8,9 +7,6 @@ public class PlayerStamina : MonoBehaviour, IResettable
 {
     [Header("配置")]
     public PlayerStaminaConfig config;
-
-    [Header("UI 连线")]
-    public Image staminaBarFill;
 
     [Header("依赖")]
     public PlayerMovement playerMovement;
@@ -169,8 +165,7 @@ public class PlayerStamina : MonoBehaviour, IResettable
 
     void UpdateStaminaBar()
     {
-        if (staminaBarFill != null)
-            staminaBarFill.fillAmount = StaminaRatio;
+        OnStaminaChanged?.Invoke();
     }
 
     // ── IResettable ──

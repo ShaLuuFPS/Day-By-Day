@@ -160,7 +160,7 @@ public class LevelUpManager : MonoBehaviour, IResettable
 
     void CreateLevelUpUI()
     {
-        Canvas canvas = GetComponentInParent<Canvas>();
+        Canvas canvas = GameObject.Find("OverlayCanvas")?.GetComponent<Canvas>();
         if (canvas == null)
         {
             canvas = Object.FindAnyObjectByType<Canvas>();

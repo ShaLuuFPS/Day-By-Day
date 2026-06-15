@@ -14,6 +14,9 @@ public class WaveManager : MonoBehaviour, IResettable
     [Tooltip("场景中的 EnemySpawner（自动查找同 GameObject 或手动拖入）")]
     public EnemySpawner enemySpawner;
 
+    /// <summary>当前波次索引（0-based，供 HUD 读取）</summary>
+    public int CurrentWaveIndex => currentWaveIndex;
+
     [Header("状态（只读）")]
     [SerializeField] private int currentWaveIndex = 0;
     [SerializeField] private int spawnedCount = 0;
