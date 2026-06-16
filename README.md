@@ -1,14 +1,27 @@
 # Day By Day
 
-第三人称丧尸生存射击游戏 · Unity 6 + URP
+> 第三人称丧尸生存射击游戏 · Unity 6 + URP
+
+![Unity](https://img.shields.io/badge/Unity-6-000000?logo=unity)
+![Release](https://img.shields.io/badge/release-v0.1.3-blue)
+
+---
+
+## 🚀 快速开始
+
+1. 前往 [Releases](https://github.com/ShaLuuFPS/Day-By-Day/releases) 下载最新版本
+2. 解压 zip 到任意目录
+3. 双击 `DayByDay.exe` 开始游戏
+
+> 无需安装 Unity 或其他依赖。
 
 ---
 
 ## 🎮 核心玩法
 
-![转视角射击+换弹](README.assets/转视角射击+换弹.gif)
+![main2](README.assets/main2.gif)
 
-双武器切换 + 体术近战 + 波次防守 + 肉鸽升级。
+双武器切换  + 波次防守 + 肉鸽升级。
 
 ### 操作
 
@@ -27,31 +40,23 @@
 
 ## 🔫 武器 & 战斗
 
-- ![换枪](README.assets/换枪.gif)**双武器槽**：1 / 2 键瞬间切换，UI 高亮当前武器
-- **瞄准射击**：屏幕中心准星 → 摄像机射线投射，子弹从 firePoint 射向命中点
+- **双武器槽**：1 / 2 键即时切换
+- **瞄准射击**：屏幕准星 → 摄像机射线投射
 - **武器拾取**：走近按 E 拾取，同款自动补弹
-
-### 换弹
-
-- R 键随时换弹
-- 弹夹打空 → 显示提示 → 0.5s 冷却后按左键自动换弹
-
-### 近战
-
-- **按住左键** 预览攻击范围（扇形蓝色面片），**松开** 执行攻击
-- 连击链：冷却内连续攻击可打出连击段，超时重置
+- **换弹**：R 键手动换弹，打空自动换弹
+- **近战**：按住左键预览攻击范围，松开执行
 
 ### Dash 冲刺
 
-![dash](README.assets/dash.gif)
+![dash2](README.assets/dash2.gif)
 
-- Shift 位移，消耗体力，体力条自动回复
+Shift 位移，消耗体力，体力自动回复。
 
 ---
 
 ## 🧟 敌人
 
-![bommer](README.assets/bommer.gif)
+![敌人2](README.assets/敌人2.gif)
 
 | 类型 | 特性 |
 |------|------|
@@ -63,7 +68,7 @@
 
 ## ⬆ 升级系统
 
-![升级](README.assets/升级.gif)
+![升级2](README.assets/升级2.gif)
 
 击杀敌人获取经验 → 升级 → 3 选 1 面板暂停游戏
 
@@ -71,7 +76,7 @@
 |------|------|
 | 穿透弹 | 子弹穿透 1 个敌人 |
 | 分裂弹 | 命中后分裂 3 发（20% 伤害） |
-| 尸体爆炸 | 击杀后 3m 范围 20 伤害（绿色爆炸） |
+| 尸体爆炸 | 击杀后 3m 范围 20 伤害 |
 | 减速弹 | 命中减速 50%，持续 0.5s |
 | 电磁弹 | 10% 触发连锁，30% 伤害，最多 5 连 |
 | 击杀回耐 | 击杀恢复 20% 体力 |
@@ -79,25 +84,9 @@
 
 ---
 
-## 🖥 UI 面板
+## 🖥 UI
 
-### 暂停
-
-![暂停](README.assets/暂停.gif)
-
-ESC 呼出暂停面板：继续游戏 / 重新开始 / 灵敏度调节 / 结束游戏（含确认弹窗）
-
-### 死亡
-
-![死亡](README.assets/死亡.gif)
-
-阵亡面板：重新开始 / 结束游戏
-
-### 通关
-
-![通关](README.assets/通关.png)
-
-清完所有波次：再来一局 / 结束游戏
+ESC 呼出暂停面板：继续游戏 / 重新开始 / 灵敏度调节 / 结束游戏（含确认弹窗）。死亡与通关结算面板同理。
 
 ---
 
@@ -113,4 +102,4 @@ ESC 呼出暂停面板：继续游戏 / 重新开始 / 灵敏度调节 / 结束�
 
 ## 📦 下载
 
-最新 Demo 见 [Releases](https://github.com/ShaLuuFPS/Day-By-Day/releases)
+最新版本见 [Releases](https://github.com/ShaLuuFPS/Day-By-Day/releases)
